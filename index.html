@@ -1,0 +1,2498 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hoops Training Week</title>
+<meta name="theme-color" content="#10151f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hoops">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Lexend:wght@400;500;600&display=swap">
+<style>
+:root { color-scheme: dark; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; font: 14px/1.4 system-ui, -apple-system, sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+.ver { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 6px); right: max(10px, env(safe-area-inset-right, 0px)); z-index: 70; background: rgba(35,44,62,.92); color: #9ba5b7; font: 600 11px/1 system-ui, sans-serif; letter-spacing: .04em; padding: 5px 9px; border-radius: 999px; pointer-events: none; }
+</style>
+<script>
+/* Saving: this app lives on its own web address, so Safari keeps its data. As extra insurance every save is also
+   mirrored into a second store (IndexedDB); if the main store is ever found empty, it is filled back from the mirror. */
+(function () {
+  var DB = 'hoops-backup', ST = 'kv';
+  function open(cb) { try { var r = indexedDB.open(DB, 1); r.onupgradeneeded = function () { r.result.createObjectStore(ST); }; r.onsuccess = function () { cb(r.result); }; r.onerror = function () { cb(null); }; } catch (e) { cb(null); } }
+  function snapshot() { var o = {}; try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); o[k] = localStorage.getItem(k); } } catch (e) {} return o; }
+  var t = null;
+  window.__mirror = function () { clearTimeout(t); t = setTimeout(function () { open(function (db) { if (!db) return; try { db.transaction(ST, 'readwrite').objectStore(ST).put(snapshot(), 'all'); } catch (e) {} }); }, 400); };
+  try { var _set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { _set.call(this, k, v); if (this === window.localStorage) window.__mirror(); }; } catch (e) {}
+  var empty = true; try { empty = !localStorage.getItem('ledger') && !localStorage.getItem('sessions') && !localStorage.getItem('workRest'); } catch (e) {}
+  if (empty) open(function (db) {
+    if (!db) return;
+    try {
+      var g = db.transaction(ST, 'readonly').objectStore(ST).get('all');
+      g.onsuccess = function () {
+        var d = g.result; if (!d || !(d.ledger || d.sessions)) return;
+        for (var k in d) try { localStorage.setItem(k, d[k]); } catch (e) {}
+        if (!sessionStorage.getItem('restoredOnce')) { sessionStorage.setItem('restoredOnce', '1'); location.reload(); }
+      };
+    } catch (e) {}
+  });
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+})();
+</script>
+</head>
+<body>
+<div class="ver" aria-label="App version">v1.0 · 31 Oct</div>
+<style>
+/* Layout: arena scoreboard. Week strip of day tiles → workout card → full-screen timer. Single deliberate dark "indoor court" theme. */
+:root {
+  --bg: #10151f;
+  --surface: #1a2130;
+  --surface-2: #232c3e;
+  --line: #2f3a4f;
+  --fg: #f4f1ea;
+  --muted: #9ba5b7;
+  --ball: #f2761d;
+  --work: #f2761d;
+  --rest: #38c78c;
+  --warm: #f4c542;
+  --brk: #5aa2ff;
+  --cool: #a08cf5;
+  --phase: var(--ball);
+  --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --body: "Lexend", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg); font: 400 17px/1.45 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 40px; box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+.wrap { max-width: 960px; margin: 0 auto; display: grid; gap: 26px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--ball); outline-offset: 3px; }
+
+/* Home */
+.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px; }
+.eyebrow { font: 600 .78rem var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--ball); margin: 0; }
+h1 { font: 900 clamp(2.6rem, 7vw, 4rem)/.9 var(--display); text-transform: uppercase; letter-spacing: .01em; margin: 4px 0 0; }
+.score { display: flex; gap: 6px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 16px; }
+.score b { font: 900 2.2rem/1 var(--display); color: var(--ball); font-variant-numeric: tabular-nums; }
+.score span { color: var(--muted); font-size: .85rem; line-height: 1.2; }
+
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .week { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .week { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.day {
+  text-align: left; background: var(--surface); border: 2px solid var(--line); border-radius: 16px;
+  padding: 12px 12px 14px; display: grid; gap: 6px; align-content: start; min-height: 128px; min-width: 0;
+}
+.day .dn { font: 700 1.05rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+.day .wn { font: 600 .98rem/1.2 var(--body); }
+.day .wf { font-size: .78rem; color: var(--muted); }
+.day.off { background: transparent; border-style: dashed; cursor: default; }
+.day.off .wn { color: var(--muted); font-weight: 400; font-size: .85rem; }
+.day.today { border-color: var(--ball); }
+.day.today .dn { color: var(--ball); }
+.day.sel { background: var(--surface-2); }
+.tick { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--rest); color: #0b1a13; font: 700 .8rem var(--body); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: clamp(18px, 3vw, 28px); display: grid; gap: 20px; }
+.card-head { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: start; }
+.card h2 { font: 900 clamp(2rem, 5vw, 2.8rem)/.95 var(--display); text-transform: uppercase; margin: 2px 0 6px; }
+.card .focus { color: var(--muted); margin: 0; max-width: 52ch; }
+.meta { display: flex; gap: 18px; flex-wrap: wrap; }
+.meta div { display: grid; }
+.meta b { font: 900 1.7rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.meta small { color: var(--muted); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
+
+.parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.part { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.part h3 { margin: 0; font: 700 1.15rem var(--display); letter-spacing: .1em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; }
+.part h3 span { color: var(--muted); font-family: var(--body); font-size: .75rem; letter-spacing: .04em; font-weight: 500; text-transform: none; }
+.part ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: .92rem; }
+.part li { display: flex; gap: 8px; align-items: baseline; }
+.part li em.hand { font-style: normal; font-size: .7rem; color: var(--ball); border: 1px solid var(--ball); border-radius: 6px; padding: 0 5px; margin-left: 2px; white-space: nowrap; }
+.part li i { font-style: normal; font: 700 .72rem var(--body); padding: 1px 6px; border-radius: 6px; background: var(--surface-2); color: var(--muted); flex: none; }
+.part.warm h3 { color: var(--warm); } .part.ballp h3 { color: var(--ball); } .part.corep h3 { color: var(--rest); } .part.tab h3 { color: var(--brk); } .part.cool h3 { color: var(--cool); }
+
+.go-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+.start {
+  background: var(--ball); color: #1c0d02; border: 0; border-radius: 16px; padding: 18px 34px;
+  font: 900 1.6rem var(--display); letter-spacing: .08em; text-transform: uppercase;
+}
+.opts { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; color: var(--muted); font-size: .9rem; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.seg button { background: transparent; border: 0; padding: 9px 14px; color: var(--muted); font-size: .88rem; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--fg); }
+.chk { display: inline-flex; gap: 8px; align-items: center; }
+.chk input { width: 20px; height: 20px; accent-color: var(--ball); }
+.note { color: var(--muted); font-size: .85rem; margin: 0; max-width: 70ch; }
+
+/* Timer */
+.timer { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; grid-template-rows: auto 1fr auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) max(18px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 18px) max(18px, env(safe-area-inset-left, 0px)); }
+.timer::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 55% at 50% 45%, color-mix(in srgb, var(--phase) 18%, transparent), transparent 70%); pointer-events: none; transition: background .4s; }
+.t-top, .t-mid, .t-bot { position: relative; max-width: 900px; width: 100%; margin: 0 auto; }
+.t-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.t-top .wname { font: 700 1.1rem var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.ghost { background: transparent; border: 1px solid var(--line); border-radius: 12px; padding: 8px 16px; color: var(--muted); font-size: .9rem; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 12px; }
+.bar i { display: block; height: 100%; width: 0; background: var(--phase); transition: width .3s linear, background .4s; }
+.t-mid { min-height: 0; overflow-y: auto; display: grid; place-content: center; text-align: center; gap: 6px; }
+.t-phase { font: 900 clamp(1.4rem, 4vw, 2rem) var(--display); letter-spacing: .22em; text-transform: uppercase; color: var(--phase); transition: color .4s; }
+.t-ex { font: 900 clamp(2.4rem, 8vw, 4.6rem)/.95 var(--display); text-transform: uppercase; text-wrap: balance; }
+.t-secs { font: 900 clamp(8rem, 34vw, 17rem)/.85 var(--display); font-variant-numeric: tabular-nums; margin: 4px 0; }
+.t-cue { color: var(--muted); max-width: 40ch; margin: 0 auto; font-size: clamp(1rem, 2.4vw, 1.25rem); min-height: 1.45em; text-wrap: balance; }
+.t-where { font: 700 1.1rem var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+.dots { display: flex; justify-content: center; gap: 8px; margin-top: 6px; min-height: 10px; }
+.dots span { width: 30px; height: 10px; border-radius: 5px; background: var(--line); }
+.dots span.done { background: var(--fg); } .dots span.now { background: var(--phase); }
+.t-bot { display: grid; gap: 14px; }
+.next { text-align: center; color: var(--muted); font-size: 1rem; min-height: 1.45em; }
+.next b { color: var(--fg); font-weight: 600; }
+.t-ctrl { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 12px; }
+.t-ctrl button { border-radius: 18px; padding: 20px 8px; border: 2px solid var(--line); background: var(--surface); font: 800 1.3rem var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.t-ctrl .main { background: var(--phase); border-color: var(--phase); color: #10151f; font-size: 1.7rem; transition: background .4s, border-color .4s; }
+.t-ctrl button:disabled { opacity: .35; }
+
+.timer[data-p="work"] { --phase: var(--work); }
+.timer[data-p="rest"] { --phase: var(--rest); }
+.timer[data-p="warm"], .timer[data-p="ready"] { --phase: var(--warm); }
+.timer[data-p="break"], .timer[data-p="setup"] { --phase: var(--brk); }
+.t-list { list-style: none; margin: 12px auto 4px; padding: 0; display: grid; gap: 10px; width: min(560px, 100%); text-align: left; }
+.t-list li { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; display: grid; gap: 2px; }
+.t-list small { color: var(--phase); font: 700 .8rem var(--body); letter-spacing: .14em; text-transform: uppercase; }
+.t-list b { font: 800 clamp(1.5rem, 4vw, 2rem)/1.05 var(--display); text-transform: uppercase; }
+.t-list span { color: var(--muted); font-size: .95rem; }
+.timer[data-p="setup"] .t-ex { font-size: clamp(2rem, 6vw, 3.4rem); }
+.timer[data-p="setup"] .t-ctrl .main { animation: nudge 1.6s ease-in-out infinite; }
+@keyframes nudge { 50% { transform: scale(1.04); } }
+.timer[data-p="cool"], .timer[data-p="done"] { --phase: var(--cool); }
+
+/* day badges, mode, kit, shooting */
+.day .dn .badges { display: inline-flex; gap: 4px; align-items: center; }
+.slay { width: 16px; height: 16px; border-radius: 4px; background: var(--brk); transform: rotate(45deg); }
+.court .route { fill: none; stroke: var(--muted); stroke-width: 2.5; stroke-dasharray: 5 5; opacity: .7; }
+.court .route.now { stroke: var(--ball); opacity: 1; stroke-width: 3.5; }
+.court .cone circle:not(.halo) { fill: var(--warm); }
+.court .cone.done circle:not(.halo) { fill: var(--rest); }
+.court .cone.now circle:not(.halo) { fill: var(--ball); }
+.pu-row { display: flex; justify-content: flex-end; }
+.pu textarea, .restore textarea { width: 100%; box-sizing: border-box; font: 500 .8rem/1.3 ui-monospace, Menlo, monospace; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); resize: vertical; word-break: break-all; }
+.pu-fields input.txt { letter-spacing: 0; width: 14em; font-size: 1rem; }
+.restore { display: grid; gap: 10px; border: 2px solid var(--brk); border-radius: 18px; padding: 14px 18px; background: color-mix(in srgb, var(--brk) 10%, var(--surface)); margin-bottom: 14px; }
+.restore b { display: block; font: 800 1.2rem var(--display); letter-spacing: .08em; text-transform: uppercase; }
+.restore span { color: var(--muted); font-size: .9rem; }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); transform: translate(-50%, 140%); background: var(--surface-2); color: var(--fg); border: 1px solid var(--line); border-radius: 14px; padding: 12px 18px; font-size: .92rem; z-index: 60; transition: transform .3s ease; max-width: calc(100% - 32px); box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+.toast.show { transform: translate(-50%, 0); }
+/* points, rewards, stats */
+.scores { display: flex; gap: 10px; flex-wrap: wrap; }
+.score.pts b { color: var(--rest); }
+.rtrack { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: center; background: linear-gradient(100deg, color-mix(in srgb, var(--ball) 14%, var(--surface)), var(--surface) 70%); border: 1px solid var(--line); border-radius: 18px; padding: 12px 16px; }
+.rtrack.compact { grid-template-columns: 48px minmax(0, 1fr); padding: 10px 12px; text-align: left; }
+.rt-top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.rt-top b { font: 800 1.15rem var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.rt-top span { color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.rt-bar { height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; margin: 6px 0 4px; }
+.rt-bar i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--warm), var(--ball)); transition: width .8s ease; }
+.rt-sub { color: var(--muted); font-size: .8rem; }
+.gift { width: 100%; height: auto; display: block; overflow: visible; }
+.gift rect { fill: var(--ball); }
+.gift .rib { fill: var(--warm); }
+.gift .bow { fill: var(--warm); }
+.gift .spark circle { fill: var(--warm); }
+.gift.wiggle { animation: wig 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes wig { 0%, 80%, 100% { transform: rotate(0); } 84% { transform: rotate(-7deg); } 88% { transform: rotate(6deg); } 92% { transform: rotate(-4deg); } 96% { transform: rotate(2deg); } }
+.gift.open .lid { transform: translate(-3px, -9px) rotate(-14deg); transform-origin: 10% 100%; }
+.gift.pop { animation: pop .7s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes pop { 0% { transform: scale(.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.tpts { width: min(560px, 100%); margin: 4px auto; }
+.pp { display: grid; gap: 8px; }
+.pp-items { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; font-size: .9rem; text-align: left; }
+.pp-items li { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--line); padding: 3px 0; color: var(--muted); }
+.pp-items b { color: var(--rest); font-variant-numeric: tabular-nums; }
+.pp-note { margin: 0; color: var(--muted); font-size: .92rem; }
+.pp-surprise { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; align-items: center; text-align: left; border: 2px solid var(--warm); border-radius: 16px; padding: 10px 14px; background: color-mix(in srgb, var(--warm) 12%, var(--surface)); }
+.pp-surprise b { display: block; font: 900 1.4rem var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--warm); }
+.pp-surprise span { color: var(--fg); }
+.banked { flex-basis: 100%; color: var(--rest); font-size: .88rem; }
+.confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+.stats { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 14px clamp(16px, 3vw, 24px); }
+.stats summary { cursor: pointer; font: 800 1.2rem var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.stats[open] summary { margin-bottom: 12px; }
+.st-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.st { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+.st b { font: 900 1.5rem var(--display); font-variant-numeric: tabular-nums; }
+.st small { color: var(--muted); font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; }
+.st-note { color: var(--muted); font-size: .9rem; margin: 12px 0 0; }
+.st-note b { color: var(--fg); }
+.st-table { overflow-x: auto; margin-top: 12px; }
+.st-table table { width: 100%; border-collapse: collapse; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.st-table th { text-align: left; color: var(--muted); font-weight: 500; font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.st-table td { padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.st-table em { font-style: normal; font-size: .72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; margin-left: 4px; }
+.timer[data-p="done"] .t-secs { color: var(--rest); }
+.timer[data-p="done"] .t-mid { place-content: start center; }
+.timer[data-p="done"] .t-secs { font-size: clamp(3.6rem, 13vh, 7rem); margin: 0; }
+.timer[data-p="done"] .t-ex { font-size: clamp(1.6rem, 5vh, 2.6rem); }
+.timer[data-p="done"] .pp-items { font-size: .82rem; }
+.timer[data-p="done"] .pp-items li { padding: 2px 0; }
+.timer[data-p="done"] .rtrack.compact { padding: 8px 12px; }
+.timer[data-p="done"] .t-cue { display: none; }
+.timer[data-p="done"] .unl { display: none; }
+@media (min-height: 860px) { .timer[data-p="done"] .t-mid { place-content: center; } }
+.pu-link { background: none; border: 0; color: var(--muted); font-size: .85rem; text-decoration: underline; padding: 4px 2px; }
+.pu { border: 1px dashed var(--line); border-radius: 16px; padding: 14px 18px; display: grid; gap: 10px; }
+.pu h3 { margin: 0; font: 700 1.05rem var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.pu p { margin: 0; color: var(--muted); font-size: .9rem; }
+.pu-fields { display: flex; flex-wrap: wrap; gap: 12px; }
+.pu-fields label { display: grid; gap: 4px; font-size: .82rem; color: var(--muted); }
+.pu-fields input { font: 600 1.2rem var(--body); letter-spacing: .3em; width: 9em; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+.pu-fields input:focus-visible { outline: 3px solid var(--ball); outline-offset: 2px; }
+.pu-btns { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.pu-msg { color: var(--ball) !important; font-weight: 600; }
+.pu-msg.ok { color: var(--rest) !important; }
+.unlocks { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.unl { display: block; text-align: center; color: var(--muted); margin-top: 6px; }
+.sball { width: 18px; height: 18px; border-radius: 50%; background: var(--ball); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--bg) 35%, transparent); }
+.mode-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.seg.mode button { padding: 10px 16px; font-size: .92rem; }
+.mode-note { color: var(--brk); font-size: .88rem; }
+.kit { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 16px; }
+.kit h3, .shoot-cta h3 { margin: 0; font: 700 1.15rem var(--display); letter-spacing: .1em; text-transform: uppercase; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.kit h3 span, .shoot-cta h3 span { font: 500 .78rem var(--body); letter-spacing: .04em; text-transform: none; color: var(--muted); }
+.kit-list { margin: 0; padding-left: 1.2em; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 24px; font-size: .95rem; }
+.kit-list li::marker { color: var(--ball); }
+.rest-grp { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.timer .rest-pick { display: flex; justify-content: center; gap: 10px 18px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: .9rem; }
+.timer .rest-pick .seg button { padding: 8px 14px; font-size: .95rem; }
+.timer[data-p="break"] .t-secs { font-size: clamp(3.2rem, 11vh, 6rem); margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px 8px 10px; font-size: .92rem; }
+.chip .box { width: 18px; height: 18px; border-radius: 6px; border: 2px solid var(--muted); display: grid; place-items: center; flex: none; }
+.chip[aria-pressed="true"] { border-color: var(--rest); color: var(--fg); }
+.chip[aria-pressed="true"] .box { background: var(--rest); border-color: var(--rest); }
+.chip[aria-pressed="true"] .box::after { content: "✓"; color: #0b1a13; font: 700 .7rem var(--body); }
+.start.alt { background: transparent; color: var(--ball); border: 2px solid var(--ball); font-size: 1.3rem; padding: 14px 24px; }
+.start.alt:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
+.start.small { font-size: 1.1rem; padding: 10px 18px; }
+.shoot-cta { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 18px; align-items: center; border: 1px solid var(--line); border-radius: 18px; padding: 14px 18px; background: color-mix(in srgb, var(--ball) 7%, var(--surface)); }
+.shoot-cta p { margin: 4px 0 0; color: var(--muted); font-size: .9rem; max-width: 60ch; }
+.shoot-cta p.prog { color: var(--fg); font-weight: 600; }
+.shoot-cta.locked { background: var(--surface); }
+.shoot-cta.locked .shoot-ico { opacity: .45; }
+@media (max-width: 640px) { .shoot-cta { grid-template-columns: 90px minmax(0, 1fr); } .shoot-cta .start { grid-column: 1 / -1; } }
+.court { display: block; width: 100%; height: auto; }
+.court .cl { fill: none; stroke: var(--muted); stroke-width: 2; opacity: .6; }
+.court rect.cl:first-child { fill: color-mix(in srgb, var(--rest) 10%, transparent); opacity: 1; stroke: var(--line); }
+.court .key { fill: color-mix(in srgb, var(--ball) 12%, transparent); stroke: var(--muted); stroke-width: 2; }
+.court .board { stroke: var(--fg); stroke-width: 4; stroke-linecap: round; }
+.court .ring { fill: none; stroke: var(--ball); stroke-width: 3; }
+.court .cone path { fill: var(--warm); }
+.court .cone.done path { fill: var(--rest); }
+.court .cone.now path { fill: var(--ball); }
+.court .cone .halo { fill: none; stroke: var(--ball); stroke-width: 2.5; }
+.court .cone text { fill: var(--fg); font: 700 13px var(--body); text-anchor: middle; }
+.timer[data-p="shoot"] { --phase: var(--ball); }
+#shoot.finished .t-ex { font-size: clamp(1.8rem, 5vw, 2.6rem); }
+#shoot.finished .s-count b { font-size: clamp(3.5rem, 10vw, 5rem); }
+#shoot.finished .s-count span { font-size: 1rem; }
+#shoot.finished .t-cue { font-size: .95rem; }
+.s-mid { position: relative; max-width: 900px; width: 100%; margin: 0 auto; min-height: 0; overflow-y: auto; display: grid; gap: 14px; align-content: center; text-align: center; }
+.s-court { width: min(100%, 380px); margin: 0 auto; }
+.s-text { display: grid; gap: 8px; min-width: 0; }
+.s-task { color: var(--muted); font-size: clamp(1rem, 2.4vw, 1.2rem); }
+.s-task b { color: var(--ball); font: 900 1.5em var(--display); }
+#shoot .t-ex { font-size: clamp(2rem, 6vw, 3.2rem); }
+.watch { font: 900 clamp(4.5rem, 15vw, 8rem)/.9 var(--display); font-variant-numeric: tabular-nums; }
+.watch.counting { color: var(--warm); }
+#shoot.finished .watch { display: none; }
+#shoot.finished .s-task { color: var(--fg); font: 800 1.5rem var(--display); letter-spacing: .06em; text-transform: uppercase; }
+.s-count { display: flex; justify-content: center; align-items: baseline; gap: 10px; }
+.s-count b { font: 900 clamp(5rem, 18vw, 9rem)/.85 var(--display); font-variant-numeric: tabular-nums; color: var(--fg); }
+.s-count span { color: var(--muted); font: 700 1.3rem var(--display); letter-spacing: .08em; text-transform: uppercase; }
+.groups { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: min(100%, 520px); margin: 0 auto; }
+.grp { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 6px; display: grid; gap: 6px; justify-items: center; }
+.grp.cur { border-color: var(--ball); }
+.grp.full { border-color: var(--rest); }
+.grp small { color: var(--muted); font-size: .72rem; letter-spacing: .06em; }
+.grp small.ga { font-size: .74rem; letter-spacing: 0; }
+.pips { display: flex; gap: 4px; }
+.pips i { width: 12px; height: 12px; border-radius: 50%; background: var(--line); }
+.pips i.on { background: var(--ball); }
+.grp.full .pips i.on { background: var(--rest); }
+.s-stats { margin: 0; color: var(--muted); font-size: .95rem; font-variant-numeric: tabular-nums; }
+.sum { grid-column: 1 / -1; width: 100%; border-collapse: collapse; font-size: .92rem; font-variant-numeric: tabular-nums; text-align: left; }
+.sum th { color: var(--muted); font-weight: 500; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+#shoot.finished .sum td { padding: 5px 8px; }
+#shoot.finished .sum th { padding: 4px 8px; }
+.sum td { padding: 8px; border-bottom: 1px solid var(--line); }
+.sum td:not(:first-child), .sum th:not(:first-child) { text-align: right; }
+.sum td.pb, b.pb { color: var(--rest); }
+.hist { display: grid; gap: 6px; margin-top: 8px; max-width: 360px; }
+.hist-h { display: flex; flex-wrap: wrap; gap: 14px; font-size: .85rem; color: var(--muted); }
+.hist-h b { color: var(--fg); font-variant-numeric: tabular-nums; }
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 40px; }
+.bars i { flex: 1; max-width: 22px; background: var(--line); border-radius: 4px 4px 0 0; }
+.bars i.best { background: var(--rest); }
+.hist small { color: var(--muted); font-size: .72rem; }
+@media (min-width: 760px) and (min-aspect-ratio: 1/1) {
+  #shoot .watch { font-size: clamp(4rem, 9vw, 6.5rem); }
+  .s-mid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 32px; }
+  .s-court { width: 100%; }
+}
+
+/* 3D player */
+.t-mid.has-fig .t-fig.is3d { padding: 0; overflow: hidden; background: none; border-color: transparent; }
+.t-mid.has-fig .t-fig.is3d .p3-wrap { max-height: 30vh; }
+@media (min-width: 760px) and (min-aspect-ratio: 1/1) { .t-mid.has-fig .t-fig.is3d .p3-wrap { max-height: 56vh; } }
+.p3d { display: block; width: 100%; height: 100%; }
+.p3-wrap { width: 100%; aspect-ratio: 4 / 3; max-width: 100%; border-radius: 16px; overflow: hidden; }
+
+/* exercise figures */
+.fig { display: block; width: 100%; height: auto; overflow: visible; }
+.fg-ground { stroke: var(--line); stroke-width: 2; }
+.fg-wall { stroke: var(--muted); stroke-width: 3; stroke-linecap: round; }
+.fg-mark { stroke: var(--brk); stroke-width: 4; stroke-linecap: round; }
+.fg-cone { fill: var(--warm); }
+.fg-near, .fg-far { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.fg-near { stroke: var(--fg); }
+.fg-far { stroke: var(--muted); opacity: .6; }
+.fg-head { fill: var(--fg); }
+.fg-ball circle { fill: var(--ball); }
+.fg-ball .seam { stroke: var(--bg); stroke-width: .9; fill: none; }
+.fg-ball.back { opacity: .5; }
+.mini { flex: none; width: 52px; aspect-ratio: 4 / 3; background: var(--surface-2); border-radius: 8px; display: grid; place-items: center; overflow: hidden; }
+.mini.nofig { visibility: hidden; }
+.part li { align-items: center; }
+.t-list li.has { grid-template-columns: 118px minmax(0, 1fr); align-items: center; column-gap: 16px; }
+.t-list li .card-fig { grid-row: span 3; background: var(--surface-2); border-radius: 12px; aspect-ratio: 4 / 3; overflow: hidden; }
+.t-list li > div { display: grid; gap: 2px; min-width: 0; }
+.t-fig { display: none; }
+.t-mid.has-fig .t-fig { display: block; width: min(100%, 520px); margin: 0 auto; background: color-mix(in srgb, var(--surface) 70%, transparent); border: 1px solid var(--line); border-radius: 24px; padding: 12px; box-sizing: border-box; }
+.t-mid.has-fig .t-fig .fig { max-height: 30vh; }
+.t-text { display: grid; gap: 6px; min-width: 0; }
+.t-mid.has-fig .t-secs { font-size: clamp(6rem, 24vw, 13rem); }
+@media (min-width: 760px) and (min-aspect-ratio: 1/1) {
+  .t-mid.has-fig { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); place-content: center stretch; align-items: center; gap: 36px; }
+  .t-mid.has-fig .t-fig .fig { max-height: 52vh; }
+  .t-mid.has-fig .t-secs { font-size: clamp(7rem, 17vw, 14rem); }
+}
+/* iPad landscape: size the timer screens by height so nothing is cut off */
+@media (min-aspect-ratio: 1/1) and (max-height: 900px) {
+  .timer { padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+  .t-bot { gap: 10px; }
+  .t-ctrl button { padding: 14px 8px; }
+  .t-text, .s-text { gap: 4px; }
+  .t-phase { font-size: clamp(1.05rem, 3.4vh, 1.6rem); }
+  .t-ex, .t-mid.has-fig .t-ex { font-size: clamp(1.7rem, 6.4vh, 3.4rem); }
+  .t-secs, .t-mid.has-fig .t-secs { font-size: clamp(4.5rem, 23vh, 13rem); margin: 0; }
+  .t-cue { font-size: clamp(.9rem, 2.4vh, 1.15rem); min-height: 0; }
+  .t-where { font-size: .9rem; margin-top: 0; }
+  .t-mid.has-fig .t-fig .fig { max-height: 48vh; }
+  .timer[data-p="setup"] .t-ex { font-size: clamp(1.7rem, 6vh, 3rem); }
+  .t-list { gap: 8px; margin: 6px auto 2px; }
+  .t-list li { padding: 8px 14px; }
+  .t-list li.has { grid-template-columns: 96px minmax(0, 1fr); }
+  .t-list b { font-size: clamp(1.2rem, 4vh, 1.8rem); }
+  #shoot .t-ex { font-size: clamp(1.7rem, 6vh, 3rem); }
+  #shoot .watch { font-size: clamp(3.5rem, 15vh, 6.5rem); }
+  .grp { padding: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap" id="home">
+  <div class="top">
+    <div>
+      <p class="eyebrow">Rep basketball · weekly plan</p>
+      <h1>Training Week</h1>
+    </div>
+    <div class="scores">
+      <div class="score"><b id="doneCount">0</b><span>of 7 sessions<br>done this week</span></div>
+      <div class="score pts"><b id="ptsTotal">0</b><span>points<br>banked</span></div>
+    </div>
+  </div>
+
+  <div id="rtHome"></div>
+
+  <div class="week" id="week"></div>
+
+  <section class="card" id="detail" aria-live="polite"></section>
+
+  <details class="stats" id="stats"><summary>My stats</summary><div id="statsBody"></div></details>
+
+  <p class="note">Go at a speed where your form stays good. Tired is fine; sloppy isn't. Every session starts with ball handling while your hands are fresh. On team training days, pick the 20s rest. If your legs are really sore or something hurts, swap in the Recovery Day session instead and tell Dad. Ticks reset each Monday.</p>
+</div>
+
+<section class="timer" id="timer" hidden>
+  <div class="t-top">
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <span class="wname" id="tName"></span>
+        <button class="ghost" id="tExit" type="button">End</button>
+      </div>
+      <div class="bar"><i id="tBar"></i></div>
+    </div>
+  </div>
+  <div class="t-mid" id="tMid">
+    <div class="t-fig" id="tFig"></div>
+    <div class="t-text">
+      <div class="t-phase" id="tPhase"></div>
+      <div class="t-ex" id="tEx"></div>
+      <div class="t-secs" id="tSecs"></div>
+      <div class="tpts" id="tPts" hidden></div>
+      <ol class="t-list" id="tList" hidden></ol>
+      <p class="t-cue" id="tCue"></p>
+      <div class="t-where" id="tWhere"></div>
+      <div class="dots" id="tDots"></div>
+    </div>
+  </div>
+  <div class="t-bot">
+    <div class="next" id="tNext"></div>
+    <div class="t-ctrl">
+      <button id="tBack" type="button">Back</button>
+      <button id="tGo" class="main" type="button">Pause</button>
+      <button id="tSkip" type="button">Skip</button>
+    </div>
+  </div>
+</section>
+
+<section class="timer" id="shoot" data-p="shoot" hidden>
+  <div class="t-top">
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <span class="wname" id="sTitle">Shooting round</span>
+        <button class="ghost" id="sExit" type="button">Close</button>
+      </div>
+      <div class="bar"><i id="sBar"></i></div>
+    </div>
+  </div>
+  <div class="s-mid">
+    <div class="s-court" id="sCourt"></div>
+    <div class="s-text">
+      <div class="t-phase" id="sNo"></div>
+      <div class="t-ex" id="sSpot"></div>
+      <div class="s-task" id="sTask"></div>
+      <div class="watch" id="sWatch">0:00</div>
+      <div class="groups" id="sGroups"></div>
+      <p class="t-cue" id="sCue"></p>
+      <p class="s-stats" id="sStats"></p>
+      <div class="tpts" id="sPts"></div>
+    </div>
+  </div>
+  <div class="t-bot">
+    <div class="next" id="sNext"></div>
+    <div class="t-ctrl">
+      <button id="sBack" type="button">Back</button>
+      <button id="sGo" class="main" type="button">Start</button>
+      <button id="sPause" type="button">Pause</button>
+    </div>
+  </div>
+</section>
+
+<script>
+// ---- Animated exercise figures. Side view faces right unless noted "front".
+// Angles in degrees. Torso t: 0 = upright, + leans forward (+x). Limbs: absolute, 0 = straight down, + toward +x, 180 = up.
+(() => {
+  const LEN = { t: 32, ua: 16, fa: 15, th: 21, sh: 21, hr: 7 };
+  const G = 106, W = 160, D = Math.PI / 180;
+  const NS = 'http://www.w3.org/2000/svg';
+
+  // ---------- base poses
+  // Side view faces +x. Front view ("front: 1") spreads limbs left/right. cr = knee bend (crouch) in degrees.
+  const ST = { t: 2, la: [-6, 4], ra: [6, 12], ll: [-3, 0], rl: [3, 0] };
+  const ATH = { t: 36, ll: [30, -45], rl: [50, -20], la: [30, 60], ra: [40, 30], cr: 10 };       // low athletic stance, right foot forward
+  const STAG = { t: 34, rl: [50, -20], ll: [30, -45], la: [55, 65], ra: [40, 30] };               // staggered dribble stance
+  const STAGW = { t: 36, rl: [62, -8], ll: [-20, -60], la: [55, 65], ra: [40, 30] };              // wide stagger (one step)
+  const RISE = { t: 12, rl: [30, -12], ll: [12, -25], la: [25, 45], ra: [30, 40] };               // hesitation: rise up
+  const FST = { t: 0, la: [-14, -6], ra: [14, 6], ll: [-7, -3], rl: [7, 3] };
+  const FATH = { t: 0, la: [-52, -14], ra: [52, 14], ll: [-58, -28], rl: [58, 28], cr: 36 };       // front: low and wide
+  const FNAR = { t: 0, la: [-52, -14], ra: [52, 14], ll: [-34, -12], rl: [34, 12], cr: 48 };       // front: feet closer, same height
+  const RUNA = { t: 16, rl: [45, -5], ll: [-25, -55], ra: [-40, 50], la: [40, 130] };
+  const RUNB = { t: 16, ll: [45, -5], rl: [-25, -55], la: [-40, 50], ra: [40, 130] };
+  const BACK1 = { t: -4, rl: [22, 28], ll: [-18, -8], ra: [-20, 40], la: [20, 60], cr: 15 };
+  const BACK2 = { t: -4, ll: [22, 28], rl: [-18, -8], la: [-20, 40], ra: [20, 60], cr: 15 };
+  const STRR = { t: 4, rl: [24, 4], ll: [-22, -14], la: [20, 30], ra: [-18, 0] };                 // walking stride, right foot ahead
+  const STRL = { t: 4, ll: [24, 4], rl: [-22, -14], ra: [20, 30], la: [-18, 0] };
+  const SQ = { t: 45, ll: [75, -30], rl: [80, -26], la: [80, 85], ra: [85, 88] };
+  const HSQ = { t: 34, ll: [60, -24], rl: [64, -20], la: [-40, -25], ra: [-45, -30] };
+  const PHI = { t: 65, ll: [-65, -65], rl: [-65, -65], la: [0, 0], ra: [0, 0] };
+  const PDN = { t: 73, ll: [-73, -73], rl: [-73, -73], la: [-60, 25], ra: [-60, 25] };
+  const FPL = { t: 77.5, ll: [-77.5, -77.5], rl: [-77.5, -77.5], la: [0, 90], ra: [0, 90] };
+  const TAB = { t: 72, la: [0, 0], ra: [0, 0], ll: [0, -90], rl: [0, -90] };
+  const KNL = { t: 5, ll: [0, -90], rl: [2, -88], la: [-5, 5], ra: [5, 10] };
+  const LUNGE = { t: 0, rl: [88, 0], ll: [-14, -85] };
+  const HIPS = { la: [-30, 60], ra: [-28, 62] };            // side: hands on hips
+  const CHIN = { la: [40, 160], ra: [42, 162] };            // side: ball under chin
+  const F = (...o) => Object.assign({}, ...o);   // x left unset = stay where the previous frame was
+  // side-view dribbling arms: the dribble hand pumps, the other arm guards
+  const RH = (down) => ({ ra: down ? [28, 12] : [40, 45], la: [70, 60], b: down ? 'RF' : 'R' });
+
+  // ---------- helpers for common movements
+  const dribble = (base, up, down, extra = {}) => [F(base, { ra: up, b: 'R' }, extra), F(base, { ra: down, b: 'RF' }, extra)];
+  // sideways shuffle: a foot is always planted; trailing foot comes in, lead foot steps out; pause when changing direction
+  function shuffle(cycles, o = {}) {
+    const fr = [], ball = (right, down) => !o.ball ? {} : right
+      ? { ra: down ? [26, 6] : [36, 22], b: down ? 'RF' : 'R' } : { la: down ? [-26, -6] : [-36, -22], b: down ? 'LF' : 'L' };
+    fr.push(F(FATH, { x: o.x0 || 30 }, ball(true, false)));
+    for (const dirn of [1, -1]) {
+      const lead = dirn > 0 ? 'r' : 'l', trail = dirn > 0 ? 'l' : 'r', right = dirn > 0;
+      for (let c = 0; c < cycles; c++) {
+        fr.push(F(FNAR, { plant: lead }, ball(right, true)));
+        fr.push(F(FATH, { plant: trail }, ball(right, false)));
+      }
+      if (o.touch) {
+        fr.push(F(FATH, { plant: lead, t: dirn * 24, cr: 50, h: .45 }, right ? { ra: [24, 6] } : { la: [-24, -6] }));
+        fr.push(F(FATH, { plant: lead }));
+      } else fr[fr.length - 1].h = .45;
+    }
+    return fr;
+  }
+  // running with planted feet: n strides out, turn (pause), n strides back
+  function runOut(n, o = {}) {
+    const fr = [], A0 = o.A || RUNA, B0 = o.B || RUNB;
+    const ball = (i) => {
+      if (!o.ball) return {};
+      const hand = o.alt ? (Math.floor(i / 2) % 2 ? 'L' : 'R') : 'R';
+      const flo = i % 2 === 1;
+      return hand === 'R' ? { ra: flo ? [40, 20] : [45, 30], b: flo ? 'F:20' : 'R' } : { la: flo ? [40, 20] : [45, 30], b: flo ? 'F:20' : 'L', bz: -1 };
+    };
+    fr.push(F(A0, { x: o.x0 || 30 }, ball(0)));
+    for (let i = 1; i <= n; i++) fr.push(F(i % 2 ? B0 : A0, { plant: 'auto', go: 1 }, ball(i)));
+    fr[fr.length - 1].h = .35;
+    // turn round on the spot, then run back the same way
+    const last = fr[fr.length - 1];
+    fr.push(F(last, { d: -1, plant: 'auto', go: 0, h: .1 }, ball(n)));
+    for (let i = n - 1; i >= 0; i--) fr.push(F(i % 2 ? B0 : A0, { d: -1, plant: 'auto', go: -1 }, ball(i)));
+    fr[fr.length - 1].h = .35;
+    fr.push(F(A0, { plant: 'auto', go: 0, h: .1 }, ball(0)));   // turn back to face the start, ready to go again
+    return fr;
+  }
+  // walking forward then backward with planted feet (used for dribble walk)
+  function walkFB(steps, o = {}) {
+    const fr = [F(STRR, { x: o.x0 || 40 }, o.fwd ? o.fwd(0) : {})];
+    for (let i = 1; i <= steps; i++) fr.push(F(i % 2 ? STRL : STRR, { plant: 'auto', go: 1 }, o.fwd ? o.fwd(i) : {}));
+    fr[fr.length - 1].h = .4;
+    for (let i = steps - 1; i >= 0; i--) fr.push(F(i % 2 ? STRL : STRR, { plant: 'auto', go: -1 }, o.back ? o.back(i) : {}));
+    fr[fr.length - 1].h = .4;
+    return fr;
+  }
+  const crossover = () => [F(FATH, { ra: [36, 10], la: [-52, -30], b: 'R' }), F(FATH, { ra: [22, -8], la: [-22, 8], b: 'F:0' }),
+                           F(FATH, { la: [-36, -10], ra: [52, 30], b: 'L' }), F(FATH, { ra: [22, -8], la: [-22, 8], b: 'F:0' })];
+  const fig8 = (dribbled) => [
+    F(FATH, { ra: [30, 10], b: dribbled ? 'R' : 'H:22:20' }), F(FATH, { ra: [15, -10], la: [-15, 10], b: dribbled ? 'F:0' : 'H:0:20' }),
+    F(FATH, { la: [-30, -10], b: dribbled ? 'L' : 'H:-22:20' }), F(FATH, { ra: [15, -10], la: [-15, 10], b: dribbled ? 'F:0' : 'H:0:20', bz: -1 }),
+  ];
+  const vdribble = () => [F(FATH, { ra: [45, 35], b: 'R' }), F(FATH, { ra: [25, 10], b: 'F:4' }), F(FATH, { ra: [-10, -35], b: 'R' }), F(FATH, { ra: [25, 10], b: 'F:4' })];
+  const pound = (s) => ({ s, k: [F(STAG, RH(false)), F(STAG, RH(true))] });
+  // jumps: load (crouch, arms back) → push off → airborne with knees tucked → soft landing with a short hold
+  const JLOAD = { t: 32, ll: [58, -24], rl: [62, -20], la: [-45, -30], ra: [-50, -35] };
+  const JPUSH = { t: 12, ll: [-6, -10], rl: [-4, -8], la: [70, 100], ra: [75, 105] };
+  const JAIR = { t: 14, ll: [40, -40], rl: [44, -36], la: [110, 130], ra: [115, 135] };
+  const JLAND = { t: 30, ll: [55, -22], rl: [60, -18], la: [60, 75], ra: [65, 80] };
+
+  // ---------- every exercise
+  const A = {
+    // warm-up
+    'Jog on the spot': { s: .3, k: [F(RUNA, { t: 8, rl: [45, -5], ll: [-5, -30] }), F(RUNB, { t: 8, ll: [45, -5], rl: [-5, -30] })] },
+    'High knees': { s: .26, k: [F(RUNA, { t: 2, rl: [95, 5], ll: [0, 0] }), F(RUNB, { t: 2, ll: [95, 5], rl: [0, 0] })] },
+    'Arm circles': { s: .3, front: 1, k: [[-90, 90], [-115, 115], [-90, 90], [-65, 65]].map(([l, r]) => F(FST, { la: [l, l], ra: [r, r] })) },
+    'Leg swings': { s: .6, props: { wall: 126 }, k: [F(ST, { x: 95, ra: [78, 85], rl: [60, 60], ll: [0, 0] }), F(ST, { x: 95, ra: [78, 85], rl: [-35, -35], ll: [0, 0] })] },
+    'Side shuffles': { s: .3, front: 1, props: { coneEnds: 1 }, k: shuffle(3, { x0: 40 }) },
+    'Butt kicks': { s: .24, k: [F(RUNA, { t: 5, rl: [0, -150], ll: [0, 0] }), F(RUNB, { t: 5, ll: [0, -150], rl: [0, 0] })] },
+    'Walking lunge & twist': { s: .75, k: [F(ST, { x: 70, h: .2 }), F(LUNGE, { x: 82, la: [70, 100], ra: [75, 105], h: .3 }), F(ST, { x: 70, h: .2 }), F({ t: 0, ll: [88, 0], rl: [-14, -85], x: 82, la: [75, 105], ra: [70, 100], h: .3 })] },
+    // cool-down
+    'Walk it out': { s: .6, k: walkFB(4, { x0: 35 }) },
+    'Quad stretch': { s: 1.2, k: [F({ t: 8, ll: [0, 0], rl: [-5, -165], ra: [-35, -10], la: [30, 40] }), F({ t: 12, ll: [0, 0], rl: [-5, -168], ra: [-35, -8], la: [30, 40] })] },
+    'Hamstring stretch': { s: 1.2, k: [F(ST, { t: 118, la: [-5, -5], ra: [0, 0], bend: 6 }), F(ST, { t: 130, la: [-8, -8], ra: [-4, -4], bend: 8 })] },
+    'Calf stretch': { s: 1.2, props: { wall: 142 }, k: [F({ x: 95, t: 30, rl: [25, -5], ll: [-28, -28], la: [75, 80], ra: [80, 85] }), F({ x: 97, t: 33, rl: [28, -5], ll: [-30, -30], la: [75, 78], ra: [80, 83] })] },
+    "Child's pose": { s: 1.4, k: [F({ x: 70, t: 100, ll: [58, -90], rl: [60, -90], la: [95, 95], ra: [95, 95], bend: 5 }), F({ x: 70, t: 103, ll: [58, -90], rl: [60, -90], la: [97, 97], ra: [97, 97], bend: 6 })] },
+    'Hip flexor stretch': { s: 1.2, k: [F({ x: 75, t: 0, rl: [88, 0], ll: [-10, -90], ra: [60, 15], la: [55, 20] }), F({ x: 79, t: -5, rl: [80, -8], ll: [-18, -90], ra: [55, 10], la: [50, 15] })] },
+    'Shoulder stretch': { s: 1.2, front: 1, k: [F(FST, { ra: [-80, -92], la: [10, 150] }), F(FST, { ra: [-84, -95], la: [12, 155] })] },
+
+    // ball handling (single-hand drills are drawn right-handed; the left-hand version is the mirror)
+    'Pound dribble — right': pound(.24),
+    'Pound dribble — weak hand': { mirror: 'Pound dribble — right' },
+    'Pound dribble — left': { mirror: 'Pound dribble — right' },
+    'Eyes-closed dribble': pound(.34),
+    'Low dribble — right': { s: .17, k: [F(STAG, { t: 42, rl: [62, -26], ll: [44, -50], cr: 12 }, RH(false), { ra: [30, 22] }), F(STAG, { t: 42, rl: [62, -26], ll: [44, -50], cr: 12 }, RH(true), { ra: [24, 6] })] },
+    'Low dribble — left': { mirror: 'Low dribble — right' },
+    'Low dribble — weak hand': { mirror: 'Low dribble — right' },
+    'Crossovers': { s: .26, front: 1, k: crossover() },
+    'Crossover combo': { s: .26, front: 1, k: crossover() },
+    'Between the legs': { s: .28, k: (() => { const b = { t: 24, rl: [44, -6], ll: [-36, -10], cr: 14 };
+      return [F(b, { ra: [45, 20], la: [-10, 0], b: 'R' }), F(b, { ra: [20, 0], la: [-20, 0], b: 'F:0' }), F(b, { la: [-45, -20], ra: [10, 10], b: 'L', h: .12 }), F(b, { ra: [20, 0], la: [-20, 0], b: 'F:0' })]; })() },
+    'Figure 8 dribble': { s: .3, front: 1, k: fig8(true) },
+    'Figure 8 wraps': { s: .42, front: 1, k: fig8(false) },
+    'Ball wraps': { s: .42, front: 1, k: [F(FST, { ra: [20, -10], b: 'R' }), F(FST, { la: [-15, 25], ra: [15, -25], b: 'C' }), F(FST, { la: [-20, 10], b: 'L' }), F(FST, { la: [-15, 25], ra: [15, -25], b: 'C', bz: -1 })] },
+    'In-and-out — right': { s: .26, front: 1, k: [F(FATH, { ra: [45, 25], b: 'R' }), F(FATH, { ra: [30, 10], b: 'F:12' }), F(FATH, { ra: [10, -15], b: 'R', h: .12 }), F(FATH, { ra: [30, 10], b: 'F:12' })] },
+    'In-and-out — left': { mirror: 'In-and-out — right' },
+    // speed dribble: same hand all the way; after turning at the cone the ball is on the other side of his body
+    'Speed dribble — right': { s: .3, props: { coneEnds: 1 }, k: runOut(3, { ball: 1, x0: 20 }) },
+    'Speed dribble — left': { mirror: 'Speed dribble — right' },
+    'Speed dribble — weak hand': { mirror: 'Speed dribble — right' },
+    'Two-move attack': { s: .3, props: { coneEnds: 1 }, k: runOut(3, { ball: 1, alt: 1, x0: 20 }) },
+    'Cone weave': { s: .32, props: { coneEnds: 1, conesMid: 1 }, k: runOut(3, { ball: 1, alt: 1, x0: 20 }) },
+    'Dribble walk': { s: .5, k: walkFB(4, { x0: 35, fwd: i => RH(i % 2 === 1), back: i => RH(i % 2 === 1) }) },
+    'Dribble & catch': { s: .24, k: [F(STAG, RH(false)), F(STAG, RH(true)), F(STAG, RH(false)), F(STAG, RH(true)), F(STAG, RH(false)), F(STAG, CHIN, { t: 20, b: 'C', h: .7 })] },
+    'V-dribble — right': { s: .26, front: 1, k: vdribble() },
+    'V-dribble — left': { mirror: 'V-dribble — right' },
+    'V-dribble — weak hand': { mirror: 'V-dribble — right' },
+    'Behind the back': { s: .3, k: [F(STAG, { t: 24, ra: [35, 25], b: 'R' }), F(STAG, { t: 24, ra: [-10, -20], la: [-30, -20], b: 'H:-14:24', bz: -1 }),
+                                     F(STAG, { t: 24, la: [-35, -25], ra: [10, 10], b: 'L', bz: -1, h: .12 }), F(STAG, { t: 24, ra: [20, 10], b: 'H:12:26' })] },
+    'Fingertip taps': { s: .2, front: 1, k: [F(FST, { la: [-160, -175], ra: [160, 175], b: 'CU' }), F(FST, { la: [-168, -178], ra: [168, 178], b: 'CU' })] },
+    'Spider dribble': { s: .16, front: 1, k: [F(FATH, { ra: [18, -5], la: [-30, -10], b: 'H:4:26' }), F(FATH, { la: [-18, 5], ra: [30, 10], b: 'H:-4:26' })] },
+    'Kneeling dribble': { s: .28, k: dribble(KNL, [45, 40], [35, 20]) },
+    'Sitting dribble': { s: .42, k: [F({ x: 70, t: 0, ll: [115, 115], rl: [117, 117], la: [-10, 0], ra: [30, 20], b: 'F:16' }), F({ x: 70, t: 0, ll: [92, 92], rl: [93, 93], la: [-10, 0], ra: [40, 10], b: 'R' })] },
+    // hesitation: dribble, rise up and pause, then the front foot steps through while the back foot stays planted
+    'Hesitation dribble': { s: .3, k: [
+      F(STAG, RH(false), { x: 60 }), F(STAG, RH(true)), F(STAG, RH(false)),
+      F(RISE, RH(false), { plant: 'l', h: .55 }),
+      F(STAGW, { plant: 'l', t: 42, ra: [62, 40], la: [70, 60], b: 'F:30' }),
+      F(STAG, RH(false), { plant: 'r', h: .25 }),
+      F(STAGW, RH(true), { plant: 'r' }),
+      F(STAG, RH(false), { plant: 'l', h: .35 }),
+    ] },
+    // retreat: two steps back (back foot first), then two steps forward again, front foot planted then back foot
+    'Retreat dribble': { s: .3, k: [
+      F(STAG, RH(false), { x: 95 }),
+      F(STAGW, RH(true), { plant: 'r' }), F(STAG, RH(false), { plant: 'l' }),
+      F(STAGW, RH(true), { plant: 'r' }), F(STAG, RH(false), { plant: 'l', h: .35 }),
+      F(STAGW, RH(true), { plant: 'l' }), F(STAG, RH(false), { plant: 'r' }),
+      F(STAGW, RH(true), { plant: 'l' }), F(STAG, RH(false), { plant: 'r', h: .35 }),
+    ] },
+    // slide dribble: dribble with the hand on the side you are sliding towards
+    'Slide dribble': { s: .3, front: 1, props: { coneEnds: 1 }, k: shuffle(4, { ball: 1, x0: 25 }) },
+
+    // footwork & speed
+    'Defensive slides': { s: .3, front: 1, props: { coneEnds: 1 }, k: shuffle(4, { x0: 15 }) },
+    'Fast feet': { s: .13, k: [F(ATH, { rl: [58, -12] }), F(ATH, { ll: [42, -38], rl: [44, -26] })] },
+    'Line hops': { s: .3, front: 1, props: { line: 80 }, k: (() => {
+      const load = { ll: [-6, -2], rl: [6, 2], cr: 40, la: [-40, -20], ra: [40, 20], t: 0 };
+      const air = { ll: [-6, -18], rl: [6, 18], cr: 30, la: [-70, -50], ra: [70, 50], t: 0 };
+      return [F(load, { x: 64, h: .25 }), F(air, { x: 70, lift: 9 }), F(air, { x: 80, lift: 17 }), F(load, { x: 96, h: .3 }), F(air, { x: 90, lift: 9 }), F(air, { x: 80, lift: 17 })]; })() },
+    'Sprint & backpedal': { s: .3, props: { coneEnds: 1 }, k: [F(RUNA, { x: 20 }), F(RUNB, { plant: 'auto', go: 1 }), F(RUNA, { plant: 'auto', go: 1 }), F(ATH, { plant: 'auto', go: 1, h: .35 }),
+      F(BACK1, { plant: 'auto', go: -1 }), F(BACK2, { plant: 'auto', go: -1 }), F(BACK1, { plant: 'auto', go: -1 }), F(BACK2, { plant: 'auto', go: -1 }), F(RUNA, { plant: 'auto', go: 0, h: .35 })] },
+    'Skater hops': { s: .3, front: 1, k: (() => {
+      const landL = { t: -14, ll: [-8, -4], rl: [-40, -72], cr: 34, la: [-50, -30], ra: [45, 70] };
+      const landR = { t: 14, rl: [8, 4], ll: [40, 72], cr: 34, ra: [50, 30], la: [-45, -70] };
+      const air = { t: 0, ll: [-16, -24], rl: [16, 24], cr: 20, la: [-40, -20], ra: [40, 20] };
+      return [F(landL, { x: 45, h: .35 }), F(air, { x: 80, lift: 14 }), F(landR, { x: 115, h: .35 }), F(air, { x: 80, lift: 14 })]; })() },
+    'Closeouts': { s: .3, props: { coneEnds: 1 }, k: (() => { const up = { t: 18, la: [160, 175], ra: [165, 178], cr: 12 };
+      return [F(RUNA, { x: 25 }), F(RUNB, { plant: 'auto', go: 1 }), F(RUNA, { plant: 'auto', go: 1 }), F(up, { plant: 'auto', go: 1, ll: [30, -30], rl: [50, -14] }), F(up, { plant: 'auto', go: 1, ll: [44, -26], rl: [40, -24] }),
+        F(up, { plant: 'auto', go: 0, ll: [30, -30], rl: [50, -14], h: .4 }), F(BACK1, { plant: 'auto', go: -1 }), F(BACK2, { plant: 'auto', go: -1 }), F(BACK1, { plant: 'auto', go: -1 }), F(BACK2, { plant: 'auto', go: -1 }), F(ATH, { plant: 'auto', go: 0, h: .3 })]; })() },
+    'High-knee sprint': { s: .2, k: [F(RUNA, { t: 4, rl: [95, 5], ll: [0, 0] }), F(RUNB, { t: 4, ll: [95, 5], rl: [0, 0] })] },
+    'Cone shuffle & touch': { s: .3, front: 1, props: { coneEnds: 1 }, k: shuffle(3, { touch: 1, x0: 30 }) },
+    'Bear crawl': { s: .4, k: (() => { const b = { t: 100, la: [0, 0], ra: [0, 0], ll: [35, -50], rl: [35, -50] };
+      const f1 = x => F(b, { x, ra: [15, 15], ll: [45, -40] }), f2 = x => F(b, { x, la: [15, 15], rl: [45, -40] });
+      return [f1(50), f2(62), f1(74), f2(86), f1(74), f2(62)]; })() },
+    'Star jumps': { s: .3, front: 1, k: [
+      F(FST, { la: [-8, -8], ra: [8, 8], ll: [-4, 0], rl: [4, 0], cr: 18, h: .1 }),
+      F(FST, { lift: 9, la: [-90, -90], ra: [90, 90], ll: [-12, -12], rl: [12, 12] }),
+      F(FST, { la: [-155, -165], ra: [155, 165], ll: [-24, -20], rl: [24, 20], cr: 18, h: .1 }),
+      F(FST, { lift: 9, la: [-90, -90], ra: [90, 90], ll: [-12, -12], rl: [12, 12] })] },
+    'Mountain climbers': { s: .26, k: [F(PHI, { x: 75, rl: [40, -70] }), F(PHI, { x: 75, ll: [40, -70] })] },
+
+    // strength & core
+    'Squats': { s: .9, k: [F(ST, { la: [90, 90], ra: [90, 90], h: .15 }), F(SQ, { h: .25 })] },
+    'Push-ups': { s: .8, k: [F(PHI, { x: 70, h: .15 }), F(PDN, { x: 70, h: .2 })] },
+    'Alternating lunges': { s: .7, k: [F(ST, HIPS), F(LUNGE, HIPS, { h: .25 }), F(ST, HIPS), F(HIPS, { t: 0, ll: [88, 0], rl: [-14, -85], h: .25 })] },
+    'Superman hold': { s: 1.1, k: [F({ t: 92, ll: [-92, -92], rl: [-92, -92], la: [92, 92], ra: [92, 92] }), F({ t: 80, ll: [-102, -102], rl: [-104, -104], la: [108, 108], ra: [110, 110], h: .6 })] },
+    'Glute bridges': { s: .9, k: [F({ x: 85, t: -95, ll: [140, -20], rl: [142, -18], la: [85, 90], ra: [88, 90] }), F({ x: 85, t: -118, ll: [108, -5], rl: [110, -3], la: [70, 80], ra: [72, 80], h: .4 })] },
+    'Wall sit': { s: 1.2, props: { wall: 62 }, k: [F({ x: 68, t: 0, ll: [88, 0], rl: [90, 0], la: [25, 115], ra: [20, 120] }), F({ x: 68, t: 2, ll: [88, 0], rl: [90, 0], la: [25, 112], ra: [20, 117] })] },
+    'Plank': { s: 1.2, k: [F(FPL, { x: 75 }), F(FPL, { x: 75, t: 76, ll: [-76, -76], rl: [-76, -76] })] },
+    'Dead bug': { s: .9, k: [F({ x: 85, t: -90, la: [-120, -115], ra: [-180, -180], rl: [95, 95], ll: [180, 90], h: .2 }), F({ x: 85, t: -90, ra: [-120, -115], la: [-180, -180], ll: [95, 95], rl: [180, 90], h: .2 })] },
+    'Side plank — left': { s: 1.2, front: 1, k: [F({ x: 80, t: 70, ll: [-70, -70], rl: [-68, -68], la: [0, 90], ra: [160, 165] }), F({ x: 80, t: 73, ll: [-73, -73], rl: [-71, -71], la: [0, 90], ra: [165, 170] })] },
+    'Side plank — right': { mirror: 'Side plank — left' },
+    'Single-leg balance': { s: .6, k: [F({ t: 2, ll: [0, 0], rl: [85, 0], ra: [45, 70], la: [20, 40], b: 'H:16:2' }), F({ t: 2, ll: [0, 0], rl: [85, 0], ra: [-20, -20], la: [-35, -30], b: 'H:-14:2', bz: -1 })] },
+    'Bird dog': { s: .7, k: [F(TAB), F(TAB, { ra: [95, 95], ll: [-92, -92], h: .35 }), F(TAB), F(TAB, { la: [95, 95], rl: [-92, -92], h: .35 })] },
+
+    // jumping: every jump loads, pushes off, flies with knees tucked and lands soft
+    'Squat jumps': { s: .32, k: [F(HSQ, { h: .25 }), F(JPUSH, { lift: 5, la: [150, 165], ra: [155, 170] }), F(JAIR, { lift: 22, la: [160, 170], ra: [165, 175] }), F(JLAND, { h: .3 })] },
+    'Calf raises': { s: .7, k: [F(ST, { h: .1 }), F(ST, { lift: 6, la: [-4, 2], ra: [4, 8], h: .25 })] },
+    'Jump & stick': { s: .32, k: [F(JLOAD, { x: 40, h: .2 }), F(JPUSH, { x: 52, lift: 6 }), F(JAIR, { x: 72, lift: 18 }), F(JLAND, { x: 95, h: .6 }), F(ST, { x: 95, d: -1, h: .1 }), F(STRR, { x: 68, d: -1 }), F(ST, { x: 40, d: -1 })] },
+    'Cone broad jumps': { s: .32, props: { coneEnds: 1 }, k: (() => {
+      const jump = (x0, x1, d) => [F(JLOAD, { x: x0, d, h: .2 }), F(JPUSH, { x: x0 + (x1 - x0) * .2, lift: 6, d }), F(JAIR, { x: (x0 + x1) / 2, lift: 18, d }), F(JLAND, { x: x1, d, h: .25 })];
+      return [...jump(30, 75), ...jump(75, 120), ...jump(120, 75, -1), ...jump(75, 30, -1)];
+    })() },
+    'Sit-ups': { s: .85, k: [F({ x: 82, t: -90, ll: [138, -20], rl: [140, -18], la: [90, -90], ra: [92, -88], h: .15 }), F({ x: 82, t: -15, ll: [125, -20], rl: [127, -18], la: [15, -175], ra: [17, -173], h: .2 })] },
+    'Ball sit-ups': { s: .85, k: [F({ x: 82, t: -90, ll: [138, -20], rl: [140, -18], la: [90, -90], ra: [92, -88], b: 'C', h: .15 }), F({ x: 82, t: -15, ll: [125, -20], rl: [127, -18], la: [15, -175], ra: [17, -173], b: 'C', h: .2 })] },
+    'Ball squats': { s: .9, k: [F(ST, CHIN, { b: 'C', h: .15 }), F(SQ, CHIN, { b: 'C', h: .25 })] },
+    'Ball squeeze hold': { s: .8, front: 1, k: [F(FST, { la: [-20, 50], ra: [20, -50], b: 'C' }), F(FST, { la: [-26, 56], ra: [26, -56], b: 'C' })] },
+    'Seated ball twists': { s: .7, k: [F({ x: 80, t: -28, ll: [112, 70], rl: [114, 72], la: [70, 80], ra: [72, 82], b: 'C', h: .15 }), F({ x: 80, t: -32, ll: [112, 70], rl: [114, 72], la: [35, 55], ra: [38, 58], b: 'C', bz: -1, h: .15 })] },
+    'V-hold': { s: 1.1, k: [F({ x: 80, t: -42, ll: [128, 112], rl: [130, 114], la: [95, 95], ra: [97, 97] }), F({ x: 80, t: -46, ll: [124, 108], rl: [126, 110], la: [98, 98], ra: [100, 100], h: .4 })] },
+    'Pogo hops': { s: .24, k: [F({ t: 0, ll: [-2, 0], rl: [2, 0], la: [-20, 20], ra: [-15, 25], cr: 14 }), F({ t: 0, ll: [-2, 4], rl: [2, 4], la: [-20, 20], ra: [-15, 25], lift: 10 })] },
+    'Rebound jumps': { s: .32, front: 1, k: [F(FATH, { la: [-20, 50], ra: [20, -50], b: 'C', h: .25 }), F(FST, { lift: 6, la: [-120, -140], ra: [120, 140], b: 'CU' }),
+                                             F(FST, { lift: 22, la: [-170, -175], ra: [170, 175], ll: [-10, -20], rl: [10, 20], b: 'CU' }), F(FATH, { la: [-20, 50], ra: [20, -50], b: 'C', h: .45 })] },
+    'Squat hold': { s: 1.2, k: [F(SQ), F(SQ, { t: 40 })] },
+    'Jump stop & pivot': { s: .3, k: [F(RUNA, { x: 30 }), F(RUNB, { plant: 'auto', go: 1 }), F(JAIR, { plant: 'auto', go: 1, lift: 8, t: 10 }),
+      F(ATH, CHIN, { b: 'C', x: 78, h: .4 }), F(ATH, CHIN, { b: 'C', d: -1, plant: 'auto', go: 0, h: .4 }), F(ATH, CHIN, { b: 'C', plant: 'auto', go: 0, h: .3 }),
+      F(ATH, CHIN, { b: 'C', d: -1, plant: 'auto', go: 0, h: .1 }), F(STRR, { d: -1, plant: 'auto', go: -1 }), F(STRL, { d: -1, plant: 'auto', go: -1 }), F(STRR, { d: -1, plant: 'auto', go: -1 }), F(ST, { d: -1, plant: 'auto', go: 0, h: .2 })] },
+
+    // mobility (recovery day)
+    'Hip circles': { s: .55, front: 1, k: [[78, -6], [80, 0], [82, 6], [80, 0]].map(([x, t]) => F(FST, { x, t, la: [-25, 40], ra: [25, -40], ll: [-7 + (80 - x), -3], rl: [7 + (80 - x), 3] })) },
+    'Cat-cow': { s: 1.2, k: [F(TAB, { bend: -6, h: .3 }), F(TAB, { bend: 7, h: .3 })] },
+    'Inchworms': { s: .7, k: [F(ST, { x: 70, t: 100, la: [0, 0], ra: [0, 0], ll: [-3, -3], rl: [3, 3], h: .2 }), F({ x: 89, t: 80, ll: [-30, -30], rl: [-28, -28], la: [0, 0], ra: [0, 0] }),
+                              F(PHI, { x: 108, h: .5 }), F({ x: 89, t: 80, ll: [-30, -30], rl: [-28, -28], la: [0, 0], ra: [0, 0] })] },
+    'Deep squat hold': { s: 1.2, k: [F(SQ, { t: 40, la: [45, 140], ra: [50, 145] }), F(SQ, { t: 42, la: [45, 140], ra: [50, 145] })] },
+    'Lunge & reach': { s: .9, k: [F(ST, { h: .15 }), F(LUNGE, { la: [175, 178], ra: [178, 180], h: .35 })] },
+    'Arm swings': { s: .55, front: 1, k: [F(FST, { la: [80, 85], ra: [-80, -85] }), F(FST, { la: [-110, -110], ra: [110, 110] })] },
+  };
+
+  // ---------- preparation
+  const SLOW = 1.35;   // everything a bit slower than the authored timing
+  const flipB = b => {
+    if (typeof b !== 'string') return b;
+    if (b.startsWith('F:')) return 'F:' + -parseFloat(b.slice(2));
+    if (b.startsWith('H:')) { const [, dx, dy] = b.split(':'); return `H:${-dx}:${dy}`; }
+    return b;
+  };
+  const neg = a => a && [-a[0], -a[1]];
+  // mirror: the left-hand / left-side version of a drill (whole picture flipped)
+  const mirrorFrame = f => Object.assign({}, f, {
+    x: f.x == null ? f.x : W - f.x, t: -(f.t || 0), bend: -(f.bend || 0),
+    la: neg(f.la), ra: neg(f.ra), ll: neg(f.ll), rl: neg(f.rl), b: flipB(f.b), go: f.go ? -f.go : f.go,
+  });
+  // turn round (d: -1): he now faces the other way, so the arm and leg nearest the camera are his other side.
+  // Swap left/right so whatever hand holds the ball keeps holding it, and it moves to the far side of his body.
+  const swapB = b => ({ R: 'L', L: 'R', RF: 'LF', LF: 'RF' }[b] || b);
+  const turnFrame = f => Object.assign({}, f, {
+    t: -(f.t || 0), bend: -(f.bend || 0),
+    la: neg(f.ra), ra: neg(f.la), ll: neg(f.rl), rl: neg(f.ll), b: flipB(swapB(f.b)),
+    plant: f.plant === 'l' ? 'r' : f.plant === 'r' ? 'l' : f.plant,
+    bz: f.b ? -(f.bz || 1) : f.bz,
+  });
+  const vec = f => {
+    const p = Object.assign({ x: 80, t: 0, lift: 0, bend: 0, cr: 0 }, f);
+    const la = p.la || [0, 0], ra = p.ra || [0, 0], ll = p.ll || [0, 0], rl = p.rl || [0, 0];
+    return [p.x, p.t, p.lift || 0, p.bend || 0, la[0], la[1], ra[0], ra[1], ll[0], ll[1], rl[0], rl[1], p.cr || 0];
+  };
+
+  function skel(v) {
+    const [x, t, lift, bend, la0, la1, ra0, ra1, ll0, ll1, rl0, rl1, cr] = v;
+    const s = a => Math.sin(a * D), c = a => Math.cos(a * D);
+    const k = c(cr || 0);   // crouch: legs foreshortened (knees bend towards the viewer)
+    const hip = [x, 0];
+    const neck = [x + LEN.t * s(t), -LEN.t * c(t)];
+    const head = [neck[0] + (LEN.hr + 2) * s(t), neck[1] - (LEN.hr + 2) * c(t)];
+    const limb = (o, a0, a1, l1, l2) => { const m = [o[0] + l1 * s(a0), o[1] + l1 * c(a0)]; return [m, [m[0] + l2 * s(a1), m[1] + l2 * c(a1)]]; };
+    const [le, lh] = limb(neck, la0, la1, LEN.ua, LEN.fa), [re, rh] = limb(neck, ra0, ra1, LEN.ua, LEN.fa);
+    const [lk, lf] = limb(hip, ll0, ll1, LEN.th * k, LEN.sh * k), [rk, rf] = limb(hip, rl0, rl1, LEN.th * k, LEN.sh * k);
+    const P = { hip, neck, head, le, lh, re, rh, lk, lf, rk, rf };
+    let low = -Infinity;
+    for (const kk of ['hip', 'neck', 'le', 'lh', 're', 'rh', 'lk', 'lf', 'rk', 'rf']) low = Math.max(low, P[kk][1]);
+    const dy = G - low - lift;
+    for (const kk in P) P[kk] = [P[kk][0], P[kk][1] + dy];
+    P.ctrl = [(P.hip[0] + P.neck[0]) / 2 + bend * -c(t), (P.hip[1] + P.neck[1]) / 2 + bend * -s(t)];
+    P.cr = cr || 0;
+    return P;
+  }
+  function ballAt(P, b) {
+    const R = 5.5;
+    if (!b) return null;
+    if (b === 'R') return [P.rh[0], P.rh[1] + R];
+    if (b === 'L') return [P.lh[0], P.lh[1] + R];
+    if (b === 'RF') return [P.rh[0], G - R + 3];
+    if (b === 'LF') return [P.lh[0], G - R + 3];
+    if (b === 'C') return [(P.rh[0] + P.lh[0]) / 2, (P.rh[1] + P.lh[1]) / 2];
+    if (b === 'CU') return [(P.rh[0] + P.lh[0]) / 2, Math.min(P.rh[1], P.lh[1]) - R];
+    if (b.startsWith('F:')) return [P.hip[0] + parseFloat(b.slice(2)), G - R + 3];
+    if (b.startsWith('H:')) { const [, dx, dy] = b.split(':'); return [P.hip[0] + +dx, P.hip[1] + +dy]; }
+    return null;
+  }
+  const isFloor = b => typeof b === 'string' && (b === 'RF' || b === 'LF' || b.startsWith('F:'));
+
+  const cache = {};
+  function prep(name) {
+    if (cache[name] !== undefined) return cache[name];
+    let key = name, mirrored = false;
+    if (name.endsWith('|L')) { key = name.slice(0, -2); mirrored = true; }      // left-hand version of a drill
+    let a = A[key];
+    if (!a) return (cache[name] = null);
+    if (a.mirror) { mirrored = !mirrored; a = Object.assign({}, A[a.mirror], { s: a.s || A[a.mirror].s }); }
+    const front = !!a.front;
+    let frames = a.k.map(f => Object.assign({}, f));
+    if (mirrored) frames = frames.map(mirrorFrame);
+    const baseDir = mirrored ? -1 : 1;
+    frames = frames.map(f => f.d === -1 ? turnFrame(f) : f);
+    // planted feet: a frame with plant 'l'/'r' keeps that foot where it was in the previous frame
+    const K = [];
+    frames.forEach((f, i) => {
+      if (f.x == null) f.x = i ? K[i - 1].v[0] : 80;
+      let v = vec(f), P = skel(v);
+      let plant = f.plant;
+      if (plant && i) {
+        // 'auto': plant whichever foot moves the body the way he's travelling (go: +1 right, -1 left, 0 = stay put)
+        const opts = plant === 'auto' ? ['l', 'r'] : [plant], prevX = K[i - 1].v[0];
+        let best = null;
+        for (const o of opts) {
+          const k = o === 'l' ? 'lf' : 'rf', vv = v.slice(); vv[0] += K[i - 1].P[k][0] - P[k][0];
+          const score = f.go ? (vv[0] - prevX) * f.go : -Math.abs(vv[0] - prevX);
+          if (!best || score > best.score) best = { o, vv, score };
+        }
+        plant = best.o; v = best.vv; P = skel(v);
+      }
+      // ball in the far hand (side view) sits behind the body
+      let bz = f.bz || 0;
+      if (!front && !f.bz && (f.b === 'L' || f.b === 'LF')) bz = -1;
+      K.push({ v, P, f, b: ballAt(P, f.b), bz, h: f.h || 0, plant: i ? plant : null, dir: baseDir * (f.d === -1 ? -1 : 1) });
+    });
+    const moveK = (k, dx) => { k.v[0] += dx; k.P = skel(k.v); k.b = ballAt(k.P, k.f.b); };
+    if (K.some(k => k.plant) && K.length > 2) {
+      // close the loop: where would the first frame land if stepped into from the last one? spread any difference over every step
+      const last = K[K.length - 1], P0 = K[0].P;
+      let best = null, wrapFoot = null;
+      for (const k of ['lf', 'rf']) { const x = K[0].v[0] + last.P[k][0] - P0[k][0]; if (best == null || Math.abs(x - K[0].v[0]) < Math.abs(best - K[0].v[0])) { best = x; wrapFoot = k[0]; } }
+      var wrapPlant = wrapFoot;
+      const drift = K[0].v[0] - best, n = K.length;
+      if (Math.abs(drift) > .5 && Math.abs(drift) < 60) K.forEach((k, i) => { if (i) moveK(k, drift * i / n); });
+      a.__drift = drift;
+    }
+    if ((a.props || {}).coneEnds) {
+      // centre travelling drills on screen
+      let lo = Infinity, hi = -Infinity;
+      K.forEach(k => { lo = Math.min(lo, k.P.lf[0], k.P.rf[0]); hi = Math.max(hi, k.P.lf[0], k.P.rf[0]); });
+      const dx = 80 - (lo + hi) / 2; K.forEach(k => moveK(k, dx));
+    }
+    const hasBall = K.some(k => k.b);
+    if (hasBall) K.forEach(k => { if (!k.b) k.b = ballAt(k.P, 'R'); });
+    // props
+    let props = Object.assign({}, a.props || {});
+    if (mirrored) props = { cones: props.cones && props.cones.map(x => W - x), wall: props.wall && W - props.wall, line: props.line && W - props.line, coneEnds: props.coneEnds, conesMid: props.conesMid };
+    if (props.coneEnds) {
+      let lo = Infinity, hi = -Infinity;
+      K.forEach(k => { lo = Math.min(lo, k.P.lf[0], k.P.rf[0]); hi = Math.max(hi, k.P.lf[0], k.P.rf[0]); });
+      props.cones = props.conesMid ? [lo + 12, (lo + hi) / 2, hi - 12] : [lo - 6, hi + 6];
+    }
+    const s = a.s * SLOW;
+    const total = K.reduce((acc, k) => acc + k.h * SLOW + s, 0);
+    const bounce = K.some(k => isFloor(k.f.b));
+    return (cache[name] = { K, s, total, props, hasBall, front, bounce, wrapPlant: typeof wrapPlant === 'undefined' ? null : wrapPlant });
+  }
+
+  function poseAt(a, time) {
+    const { K, s } = a;
+    if (K.length === 1) return { P: K[0].P, ball: K[0].b, bz: K[0].bz, dir: K[0].dir };
+    let t = ((time % a.total) + a.total) % a.total, i = 0;
+    for (; i < K.length; i++) { const seg = K[i].h * SLOW + s; if (t < seg) break; t -= seg; }
+    i = Math.min(i, K.length - 1);
+    const A0 = K[i], B0 = K[(i + 1) % K.length];
+    const hold = A0.h * SLOW, u = t < hold ? 0 : (t - hold) / s, e = .5 - .5 * Math.cos(Math.PI * Math.min(1, u));
+    const v = A0.v.map((x, j) => x + (B0.v[j] - x) * e);
+    let P = skel(v);
+    let ball = A0.b && B0.b ? [A0.b[0] + (B0.b[0] - A0.b[0]) * e, A0.b[1] + (B0.b[1] - A0.b[1]) * e] : null;
+    // keep the planted foot exactly still through the whole step
+    const plantFoot = B0.plant || (B0 === K[0] ? a.wrapPlant : null);
+    if (plantFoot) {
+      const k = plantFoot === 'l' ? 'lf' : 'rf', miss = A0.P[k][0] - B0.P[k][0], dx = A0.P[k][0] - P[k][0] - miss * e;   // blend out any loop-closing difference smoothly
+      if (dx) { for (const kk in P) if (Array.isArray(P[kk])) P[kk] = [P[kk][0] + dx, P[kk][1]]; }
+      // the other foot lifts in a small arc as it steps, instead of dragging along the floor
+      const sw = plantFoot === 'l' ? ['rf', 'rk'] : ['lf', 'lk'], arc = Math.sin(Math.PI * e);
+      const travel = Math.abs(B0.P[sw[0]][0] - A0.P[sw[0]][0]);
+      if (travel > 1.5) { const hgt = Math.min(7, 2 + travel * .2) * arc; P[sw[0]] = [P[sw[0]][0], P[sw[0]][1] - hgt]; P[sw[1]] = [P[sw[1]][0], P[sw[1]][1] - hgt * .5]; }
+    }
+    return { P, ball, bz: e < .5 ? A0.bz : B0.bz, dir: e < .5 ? A0.dir : B0.dir };
+  }
+
+  // ---------- DOM
+  const live = [];
+  const el = (tag, attrs, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); parent && parent.appendChild(n); return n; };
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function make(name, cls) {
+    const a = prep(name);
+    if (!a) return null;
+    const svg = el('svg', { viewBox: `-10 -18 ${W + 20} 135`, class: 'fig ' + (cls || ''), role: 'img', 'aria-label': name + ' demonstration' });
+    el('line', { x1: -6, y1: G + 4, x2: W + 6, y2: G + 4, class: 'fg-ground' }, svg);
+    const pr = a.props;
+    if (pr.wall) el('line', { x1: pr.wall, y1: G + 4, x2: pr.wall, y2: 14, class: 'fg-wall' }, svg);
+    if (pr.line) el('line', { x1: pr.line - 4, y1: G + 4, x2: pr.line + 4, y2: G + 4, class: 'fg-mark' }, svg);
+    (pr.cones || []).forEach(x => el('path', { d: `M${x - 6} ${G + 4} L${x} ${G - 9} L${x + 6} ${G + 4} Z`, class: 'fg-cone' }, svg));
+    const ballBack = el('g', { class: 'fg-ball back' }, svg);
+    const far = el('path', { class: 'fg-far' }, svg);
+    const torso = el('path', { class: 'fg-near' }, svg);
+    const head = el('circle', { r: LEN.hr, class: 'fg-head' }, svg);
+    const near = el('path', { class: 'fg-near' }, svg);
+    const ballFront = el('g', { class: 'fg-ball' }, svg);
+    for (const g of [ballBack, ballFront]) { el('circle', { r: 5.5 }, g); el('path', { d: 'M-5.5 0 H5.5 M0 -5.5 V5.5', class: 'seam' }, g); }
+    const item = { svg, a, far, torso, head, near, ballBack, ballFront, t0: Math.random() * 10 };
+    const still = typeof cls === 'number';
+    draw(item, still ? cls * a.total : reduce ? a.total * .4 : 0);
+    if (!reduce && !still) live.push(item);
+    kick();
+    return svg;
+  }
+
+  const pt = p => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+  function draw(it, time) {
+    const { P, ball, bz } = poseAt(it.a, time);
+    it.far.setAttribute('d', `M${pt(P.neck)}L${pt(P.le)}L${pt(P.lh)}M${pt(P.hip)}L${pt(P.lk)}L${pt(P.lf)}`);
+    it.torso.setAttribute('d', `M${pt(P.hip)}Q${pt(P.ctrl)} ${pt(P.neck)}`);
+    it.near.setAttribute('d', `M${pt(P.neck)}L${pt(P.re)}L${pt(P.rh)}M${pt(P.hip)}L${pt(P.rk)}L${pt(P.rf)}`);
+    it.head.setAttribute('cx', P.head[0].toFixed(1)); it.head.setAttribute('cy', P.head[1].toFixed(1));
+    const on = ball ? `translate(${pt(ball)})` : null;
+    it.ballFront.style.display = ball && bz >= 0 ? '' : 'none';
+    it.ballBack.style.display = ball && bz < 0 ? '' : 'none';
+    if (on) { it.ballFront.setAttribute('transform', on); it.ballBack.setAttribute('transform', on); }
+  }
+
+  let raf = 0;
+  function kick() { if (!raf && live.length) raf = requestAnimationFrame(loop); }
+  function loop(ms) {
+    raf = 0;
+    for (let i = live.length - 1; i >= 0; i--) {
+      const it = live[i];
+      if (!it.svg.isConnected) { if (it.seen) live.splice(i, 1); continue; }
+      it.seen = true;
+      draw(it, ms / 1000 + it.t0);
+    }
+    kick();
+  }
+
+  function hydrate(root) {
+    root.querySelectorAll('[data-ex]').forEach(n => {
+      if (n.firstChild) return;
+      const f = make(n.dataset.ex, n.dataset.size || '');
+      if (f) n.appendChild(f); else n.classList.add('nofig');
+    });
+  }
+
+  function frameX(name) { const a = prep(name); return a && a.K.map(k => Math.round(k.v[0]) + (k.plant || '')).concat(['drift ' + Math.round(A[name.replace('|L', '')].__drift || 0)]); }
+  function sample(name, time) { const a = prep(name); if (!a) return null; const r = poseAt(a, time); return { P: r.P, ball: r.ball, bz: r.bz, dir: r.dir, props: a.props, front: a.front, total: a.total, bounce: a.bounce }; }
+  window.Fig = { make, hydrate, sample, frameX, has: n => !!prep(n), names: () => Object.keys(A) };
+})();
+
+</script>
+
+<script>
+// ---- Low-poly 3D player (early-2000s console style), plain WebGL, no libraries.
+// Driven by the same exercise keyframes as the stick figures (Fig.sample).
+window.Player3D = (() => {
+  const V = {
+    sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+    add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+    mul: (a, s) => [a[0] * s, a[1] * s, a[2] * s],
+    len: a => Math.hypot(a[0], a[1], a[2]),
+    norm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+    cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+    lerp: (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t],
+  };
+  // column-major 4x4 matrices
+  const M = {
+    persp(fov, asp, n, f) { const t = 1 / Math.tan(fov / 2), nf = 1 / (n - f); return [t / asp, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) * nf, -1, 0, 0, 2 * f * n * nf, 0]; },
+    look(e, c, up) {
+      const z = V.norm(V.sub(e, c)), x = V.norm(V.cross(up, z)), y = V.cross(z, x);
+      return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0,
+        -(x[0] * e[0] + x[1] * e[1] + x[2] * e[2]), -(y[0] * e[0] + y[1] * e[1] + y[2] * e[2]), -(z[0] * e[0] + z[1] * e[1] + z[2] * e[2]), 1];
+    },
+    mul(a, b) { const o = new Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k]; o[i * 4 + j] = s; } return o; },
+    // basis (x,y,z axes scaled) + translation
+    basis(x, y, z, p) { return [x[0], x[1], x[2], 0, y[0], y[1], y[2], 0, z[0], z[1], z[2], 0, p[0], p[1], p[2], 1]; },
+  };
+
+  // ---------- geometry (flat-shaded: each triangle gets its own face normal)
+  function flat(tris) { // tris: [[p,p,p,(uv,uv,uv)]...]
+    const pos = [], nor = [], uv = [];
+    for (const t of tris) {
+      const n = V.norm(V.cross(V.sub(t[1], t[0]), V.sub(t[2], t[0])));
+      for (let i = 0; i < 3; i++) { pos.push(...t[i]); nor.push(...n); uv.push(...(t[3] ? t[3][i] : [0, 0])); }
+    }
+    return { pos, nor, uv };
+  }
+  function cylinder(seg, rTop, rBot) { // unit height along +y, centred at origin
+    const tris = [];
+    for (let i = 0; i < seg; i++) {
+      const a0 = i / seg * Math.PI * 2, a1 = (i + 1) / seg * Math.PI * 2;
+      const b0 = [Math.cos(a0) * rBot, -.5, Math.sin(a0) * rBot], b1 = [Math.cos(a1) * rBot, -.5, Math.sin(a1) * rBot];
+      const t0 = [Math.cos(a0) * rTop, .5, Math.sin(a0) * rTop], t1 = [Math.cos(a1) * rTop, .5, Math.sin(a1) * rTop];
+      const u0 = i / seg, u1 = (i + 1) / seg;
+      tris.push([b0, t1, t0, [[u0, 0], [u1, 1], [u0, 1]]], [b0, b1, t1, [[u0, 0], [u1, 0], [u1, 1]]]);
+      tris.push([[0, .5, 0], t0, t1], [[0, -.5, 0], b1, b0]);
+    }
+    return flat(tris);
+  }
+  function box() {
+    const p = (x, y, z) => [x * .5, y * .5, z * .5], F = [];
+    const quad = (a, b, c, d) => { F.push([a, b, c, [[0, 0], [1, 0], [1, 1]]], [a, c, d, [[0, 0], [1, 1], [0, 1]]]); };
+    quad(p(1, -1, 1), p(1, -1, -1), p(1, 1, -1), p(1, 1, 1));      // +x (front of torso)
+    quad(p(-1, -1, -1), p(-1, -1, 1), p(-1, 1, 1), p(-1, 1, -1));  // -x
+    quad(p(-1, 1, 1), p(1, 1, 1), p(1, 1, -1), p(-1, 1, -1));      // +y
+    quad(p(-1, -1, -1), p(1, -1, -1), p(1, -1, 1), p(-1, -1, 1));  // -y
+    quad(p(-1, -1, 1), p(1, -1, 1), p(1, 1, 1), p(-1, 1, 1));      // +z
+    quad(p(1, -1, -1), p(-1, -1, -1), p(-1, 1, -1), p(1, 1, -1));  // -z
+    return flat(F);
+  }
+  function quadXY() { // front decal, faces +x in local space after basis
+    return flat([[[0, -.5, .5], [0, -.5, -.5], [0, .5, -.5], [[0, 0], [1, 0], [1, 1]]], [[0, -.5, .5], [0, .5, -.5], [0, .5, .5], [[0, 0], [1, 1], [0, 1]]]]);
+  }
+  function ico(detail) {
+    const t = (1 + Math.sqrt(5)) / 2;
+    let v = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map(V.norm);
+    let f = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+    for (let d = 0; d < detail; d++) {
+      const nf = [], mid = (a, b) => { v.push(V.norm(V.lerp(v[a], v[b], .5))); return v.length - 1; };
+      for (const [a, b, c] of f) { const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a); nf.push([a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]); }
+      f = nf;
+    }
+    return flat(f.map(([a, b, c]) => [v[a], v[b], v[c], [[.5 + Math.atan2(v[a][2], v[a][0]) / 6.283, .5 + v[a][1] / 2], [.5 + Math.atan2(v[b][2], v[b][0]) / 6.283, .5 + v[b][1] / 2], [.5 + Math.atan2(v[c][2], v[c][0]) / 6.283, .5 + v[c][1] / 2]]]));
+  }
+  function cone(seg) { const g = cylinder(seg, .02, .5); return g; }
+  function plane() { return flat([[[-.5, 0, .5], [.5, 0, .5], [.5, 0, -.5], [[0, 0], [1, 0], [1, 1]]], [[-.5, 0, .5], [.5, 0, -.5], [-.5, 0, -.5], [[0, 0], [1, 1], [0, 1]]]]); }
+  function wallQuad() { return flat([[[-.5, 0, 0], [.5, 0, 0], [.5, 1, 0], [[0, 0], [1, 0], [1, 1]]], [[-.5, 0, 0], [.5, 1, 0], [-.5, 1, 0], [[0, 0], [1, 1], [0, 1]]]]); }
+
+  // ---------- textures (drawn on canvas, original artwork)
+  function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return c; }
+  const JERSEY = canvasTex(128, 192, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    g.lineJoin = 'round'; g.textAlign = 'center';
+    g.font = '900 34px "Arial Black", Impact, sans-serif';
+    g.lineWidth = 6; g.strokeStyle = '#f4f1ea'; g.strokeText('BULLS', w / 2, 58); g.fillStyle = '#121212'; g.fillText('BULLS', w / 2, 58);
+    g.font = '900 64px "Arial Black", Impact, sans-serif';
+    g.lineWidth = 7; g.strokeText('23', w / 2, 132); g.fillText('23', w / 2, 132);
+  });
+  const JERSEY_BACK = canvasTex(128, 192, (g, w, h) => {
+    g.clearRect(0, 0, w, h); g.textAlign = 'center'; g.lineJoin = 'round';
+    g.font = '900 72px "Arial Black", Impact, sans-serif'; g.lineWidth = 7; g.strokeStyle = '#f4f1ea'; g.strokeText('23', w / 2, 110); g.fillStyle = '#121212'; g.fillText('23', w / 2, 110);
+  });
+  const SHORTS = canvasTex(64, 16, (g, w, h) => { g.fillStyle = '#141414'; g.fillRect(0, 0, w, h); g.fillStyle = '#f4f1ea'; g.fillRect(w * .25 - 2, 0, 4, h); g.fillRect(w * .75 - 2, 0, 4, h); });
+  const BALL = canvasTex(64, 64, (g, w, h) => {
+    g.fillStyle = '#e8701f'; g.fillRect(0, 0, w, h); g.strokeStyle = '#3a1c08'; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.moveTo(w / 4, 0); g.lineTo(w / 4, h); g.moveTo(w * .75, 0); g.lineTo(w * .75, h); g.stroke();
+    g.beginPath(); g.arc(w / 2, h / 2, w * .32, -1.2, 1.2); g.stroke(); g.beginPath(); g.arc(0, h / 2, w * .32, -1.2, 1.2); g.stroke();
+  });
+  const FLOOR = canvasTex(256, 128, (g, w, h) => {
+    for (let i = 0; i < 16; i++) { const y = i * h / 16; g.fillStyle = ['#b98552', '#c28d58', '#ad7a49', '#bf8a55'][i % 4]; g.fillRect(0, y, w, h / 16); g.fillStyle = 'rgba(60,30,10,.35)'; g.fillRect(0, y, w, 1); for (let k = 0; k < 3; k++) g.fillRect(((i * 53 + k * 97) % w), y, 1, h / 16); }
+  });
+  const BACKDROP = canvasTex(8, 128, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#f07a3a'); gr.addColorStop(1, '#e8602a'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+
+  const hex = c => [parseInt(c.slice(1, 3), 16) / 255, parseInt(c.slice(3, 5), 16) / 255, parseInt(c.slice(5, 7), 16) / 255];
+  const COL = { skin: hex('#e7b28d'), hair: hex('#6a4a2e'), jersey: hex('#141414'), trim: hex('#f4f1ea'), shorts: hex('#161616'), sock: hex('#121212'),
+    shoe: hex('#2f6fe0'), sole: hex('#f2c230'), white: hex('#ffffff'), cone: hex('#f4a41c'), wall: hex('#6c7480'), eye: hex('#241a14'), mark: hex('#f4f1ea') };
+
+  // ---------- GL setup
+  let gl, prog, loc, meshes = {}, texes = {}, canvas, host, raf = 0, cur = null, t0 = 0, ro = null, failed = false;
+  function compile() {
+    const vs = `attribute vec3 p; attribute vec3 n; attribute vec2 u; uniform mat4 mvp; uniform mat4 model; varying vec3 vn; varying vec2 vu; varying float vd; uniform vec3 eye;
+      void main(){ vec4 w = model*vec4(p,1.); vn = normalize(mat3(model)*n); vu = u; vd = distance(w.xyz, eye); gl_Position = mvp*w; }`;
+    const fs = `precision mediump float; varying vec3 vn; varying vec2 vu; varying float vd; uniform vec3 col; uniform sampler2D tex; uniform float useTex; uniform float lit; uniform vec3 fogc; uniform float alpha;
+      void main(){ vec3 n = normalize(vn); vec3 L = normalize(vec3(.45,.8,.55));
+        float d = max(dot(n,L),0.); float back = max(dot(n, normalize(vec3(-.6,.3,-.4))),0.);
+        vec4 t = texture2D(tex, vu); vec3 base = mix(col, t.rgb, useTex*t.a);
+        float a = mix(alpha, t.a*alpha, step(1.5,useTex));
+        vec3 c = base*mix(1., .5 + .6*d + .14*back, lit);
+        float f = clamp((vd-380.)/400., 0., .45); c = mix(c, fogc, f);
+        if (a < .05) discard; gl_FragColor = vec4(c, a); }`;
+    const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+    prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error('link');
+    gl.useProgram(prog);
+    loc = {}; for (const a of ['p', 'n', 'u']) loc[a] = gl.getAttribLocation(prog, a);
+    for (const u of ['mvp', 'model', 'eye', 'col', 'tex', 'useTex', 'lit', 'fogc', 'alpha']) loc[u] = gl.getUniformLocation(prog, u);
+  }
+  function upload(g) {
+    const mk = d => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(d), gl.STATIC_DRAW); return b; };
+    return { p: mk(g.pos), n: mk(g.nor), u: mk(g.uv), count: g.pos.length / 3 };
+  }
+  function texture(c, repeat) {
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    const wrap = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE; gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+    return t;
+  }
+  function init() {
+    canvas = document.createElement('canvas'); canvas.className = 'p3d';
+    gl = canvas.getContext('webgl', { antialias: true, alpha: false, preserveDrawingBuffer: false });
+    if (!gl) throw new Error('no webgl');
+    compile();
+    gl.enable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    meshes = { cyl: upload(cylinder(7, .5, .5)), cylT: upload(cylinder(7, .5, .42)), box: upload(box()), decal: upload(quadXY()), head: upload(ico(1)),
+      ball: upload(ico(2)), disc: upload(cylinder(18, .5, .5)), cone: upload(cylinder(8, .04, .5)), plane: upload(plane()), wall: upload(wallQuad()), hair: upload(ico(1)) };
+    texes = { jersey: texture(JERSEY), back: texture(JERSEY_BACK), shorts: texture(SHORTS, true), ball: texture(BALL, true), floor: texture(FLOOR, true), drop: texture(BACKDROP) };
+  }
+
+  // ---------- drawing
+  let VP, EYE, camX = 0, camY = 0, camFor = null, camTop = 0;
+  function draw(mesh, model, col, tex, opts = {}) {
+    gl.uniformMatrix4fv(loc.model, false, model);
+    gl.uniformMatrix4fv(loc.mvp, false, VP);
+    gl.uniform3fv(loc.col, col || COL.white);
+    gl.uniform1f(loc.useTex, tex ? (opts.decal ? 2 : 1) : 0);
+    gl.uniform1f(loc.lit, opts.unlit ? 0 : 1);
+    gl.uniform1f(loc.alpha, opts.alpha == null ? 1 : opts.alpha);
+    if (tex) { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(loc.tex, 0); }
+    for (const [a, b, n] of [['p', mesh.p, 3], ['n', mesh.n, 3], ['u', mesh.u, 2]]) {
+      if (loc[a] < 0) continue; gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.enableVertexAttribArray(loc[a]); gl.vertexAttribPointer(loc[a], n, gl.FLOAT, false, 0, 0);
+    }
+    gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+  }
+  // a limb segment between two 3D points
+  function seg(a, b, r, col, mesh = meshes.cyl, tex) {
+    const d = V.sub(b, a), L = V.len(d); if (L < .01) return;
+    const y = V.mul(d, 1 / L); let x = V.cross(y, [0, 0, 1]); if (V.len(x) < .1) x = V.cross(y, [1, 0, 0]); x = V.norm(x); const z = V.cross(x, y);
+    draw(mesh, M.basis(V.mul(x, r * 2), V.mul(y, L), V.mul(z, r * 2), V.lerp(a, b, .5)), col, tex);
+  }
+  const sphere = (p, r, col, mesh = meshes.head, tex) => draw(mesh, M.basis([r, 0, 0], [0, r, 0], [0, 0, r], p), col, tex); // ico mesh has radius 1
+
+  const G = 106;
+  const to3 = (p, z) => [p[0] - 80, G - p[1], z];
+  let still = false;
+  function drawScene(time) {
+    const w = canvas.width, h = canvas.height;
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(.06, .08, .12, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    const asp = w / h;
+    const S = Fig.sample(cur, time); if (!S) return;
+    const { P, ball, bz, props, front, dir, bounce } = S;
+    // camera gently follows him on drills that travel between cones
+    const travel = !!(props.cones && props.cones.length);
+    const want = travel ? Math.max(-34, Math.min(34, (P.hip[0] - 80) * .55)) : 0;
+    // ...and rises a little for moves that go high (jumps, arms overhead), so nothing is cut off
+    if (camFor !== cur) {
+      let top = 0; const T = S.total || 1;
+      for (let i = 0; i < 24; i++) { const q = Fig.sample(cur, T * i / 24); top = Math.max(top, G - q.P.head[1], G - q.P.lh[1], G - q.P.rh[1], q.ball ? G - q.ball[1] + 9 : 0); }
+      camTop = Math.max(0, Math.min(34, top - 88));
+    }
+    const wantY = camTop;
+    if (camFor !== cur || still) { camX = want; camY = wantY; camFor = cur; } else { camX += (want - camX) * .045; camY += (wantY - camY) * .05; }
+    EYE = [52 + camX, 88 + camY * .6, 246 + camY * 1.6];
+    const fov = (asp < 1.2 ? 39 : 33) * Math.PI / 180;
+    VP = M.mul(M.persp(fov, asp, 5, 900), M.look(EYE, [camX, 56 + camY * .7, 0], [0, 1, 0]));
+    gl.uniform3fv(loc.eye, EYE); gl.uniform3fv(loc.fogc, [.06, .08, .12]);
+
+    // set: floor, backdrop
+    draw(meshes.plane, M.basis([760, 0, 0], [0, 1, 0], [0, 0, 300], [0, 0, -10]), null, texes.floor);
+    draw(meshes.wall, M.basis([900, 0, 0], [0, 300, 0], [0, 0, 1], [0, 0, -130]), null, texes.drop, { unlit: true });
+    draw(meshes.plane, M.basis([760, 0, 0], [0, 1, 0], [0, 0, 1.2], [0, .2, 22]), [.95, .93, .88], null);  // court line
+
+    // props
+    (props.cones || []).forEach(x => { draw(meshes.cone, M.basis([11, 0, 0], [0, 13, 0], [0, 0, 11], [x - 80, 6.5, -16]), COL.cone); draw(meshes.box, M.basis([12, 0, 0], [0, 1, 0], [0, 0, 12], [x - 80, .5, -16]), COL.cone); });
+    if (props.wall) draw(meshes.box, M.basis([3, 0, 0], [0, 110, 0], [0, 0, 34], [props.wall - 80, 55, -2]), COL.wall);
+    if (props.line) draw(meshes.plane, M.basis([3, 0, 0], [0, 1, 0], [0, 0, 40], [props.line - 80, .3, 0]), COL.mark);
+
+    // body frame
+    const hip0 = to3(P.hip, 0), neck0 = to3(P.neck, 0), up = V.norm(V.sub(neck0, hip0));
+    // chest direction: side view = the spine turned 90° towards the way he faces (smooth through lying, bending and sitting up);
+    // front view = towards the camera
+    const fwd = front ? [0, 0, 1] : V.norm([up[1] * dir, -up[0] * dir, 0]);
+    const side = front ? V.norm(V.cross(up, fwd)) : [0, 0, 1]; // right side of body (near camera for side view)
+    const sideR = front ? side : [0, 0, 1];
+    const zl = (p, s, off) => V.add(to3(p, 0), V.mul(sideR, s * off));
+    const breath = Math.sin(time * 2.3);                       // slow breathing: chest and shoulders rise a little
+    const lift = V.mul(up, .45 * breath);
+    const hipR = zl(P.hip, 1, 4.4), hipL = zl(P.hip, -1, 4.4), shR = V.add(zl(P.neck, 1, 8), lift), shL = V.add(zl(P.neck, -1, 8), lift);
+    const kb = V.mul(fwd, 21 * Math.sin((P.cr || 0) * Math.PI / 180));   // bent knees push forward
+    const kneeR = V.add(zl(P.rk, 1, 4.2), kb), footR = zl(P.rf, 1, 4.2), kneeL = V.add(zl(P.lk, -1, 4.2), kb), footL = zl(P.lf, -1, 4.2);
+    const elR = V.add(zl(P.re, 1, 8), V.mul(lift, .6)), hR = V.add(zl(P.rh, 1, 8), V.mul(lift, .3)), elL = V.add(zl(P.le, -1, 8), V.mul(lift, .6)), hL = V.add(zl(P.lh, -1, 8), V.mul(lift, .3));
+
+    // ball: rolls only while bouncing; squashes a little as it hits the floor
+    const BR = 5.8;
+    let ballPos = ball ? [ball[0] - 80, G - ball[1] + 3.3, front ? (bz < 0 ? -9 : 9) : (bz < 0 ? -12 : 7)] : null;
+    let sq = 1;
+    if (ballPos && bounce && ballPos[1] < BR + 1.6) { sq = Math.max(.8, Math.min(1, (ballPos[1] - .4) / BR)); ballPos[1] = BR * sq; }
+    if (ballPos && ballPos[1] < BR) ballPos[1] = BR * sq;
+
+    // soft shadows on the floor (drawn before the body, without writing depth)
+    gl.depthMask(false);
+    const pts = [P.hip, P.neck, P.head, P.lf, P.rf, P.lh, P.rh, P.lk, P.rk].map(p => to3(p, 0));
+    let x0 = Infinity, x1 = -Infinity, low = Infinity;
+    for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); low = Math.min(low, p[1]); }
+    const air = Math.max(0, low - 1), fade = Math.max(.25, 1 - air / 40);
+    const sw = (x1 - x0) + (front ? 26 : 16), sd = front ? 20 : 26;
+    draw(meshes.disc, M.basis([sw * (1 - air / 120), 0, 0], [0, .1, 0], [0, 0, sd], [(x0 + x1) / 2, .25, 0]), [0, 0, 0], null, { unlit: true, alpha: .26 * fade });
+    if (ballPos) { const bh = Math.max(0, ballPos[1] - BR), bf = Math.max(.15, 1 - bh / 45);
+      draw(meshes.disc, M.basis([13 * (1 + bh / 90), 0, 0], [0, .1, 0], [0, 0, 11 * (1 + bh / 90)], [ballPos[0] + 1, .3, ballPos[2]]), [0, 0, 0], null, { unlit: true, alpha: .3 * bf }); }
+    gl.depthMask(true);
+
+    if (ballPos) { const spin = bounce ? (ballPos[0] * .09 - ballPos[1] * .16) : 0, sx = 1 / Math.sqrt(sq);
+      draw(meshes.ball, M.basis([BR * sx * Math.cos(spin), 0, -BR * sx * Math.sin(spin)], [0, BR * sq, 0], [BR * sx * Math.sin(spin), 0, BR * sx * Math.cos(spin)], ballPos), null, texes.ball); }
+
+    // legs: thigh skin + shorts sleeve, shin skin + sock, shoe
+    const leg = (hp, kn, ft) => {
+      seg(hp, kn, 3.8, COL.skin);
+      sphere(kn, 3.7, COL.skin);                                           // knee
+      seg(hp, V.lerp(hp, kn, .62), 5.4, COL.shorts, meshes.cylT, texes.shorts);
+      sphere(hp, 5.3, COL.shorts);                                         // hip joint, inside the shorts
+      seg(kn, ft, 3.2, COL.skin);
+      seg(V.lerp(kn, ft, .5), ft, 3.5, COL.sock);
+      sphere(ft, 3.4, COL.sock);                                           // ankle
+      // shoe: forward along body forward projected on floor
+      // Shoes: the ankle always sits on the shoe.
+      //  - foot on the ground: flat, toes the way he faces
+      //  - face-down with the shin along the floor (plank, superman, child's pose): flat, toes pointing back
+      //  - foot in the air: follows the shin
+      const shin = V.norm(V.sub(ft, kn)), dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      const orth = (v, ax) => { const o = V.sub(v, V.mul(ax, dot(v, ax))); return V.len(o) < 1e-3 ? null : V.norm(o); };
+      const toeS = front ? [0, 0, 1] : V.norm([-shin[1] * dir, shin[0] * dir, 0]);
+      const upS = orth(V.mul(shin, -1), toeS) || [0, 1, 0];
+      const faceDown = !front && fwd[1] < -.6 && Math.abs(shin[1]) < .6;
+      const xF = front ? [0, 0, 1] : faceDown ? [Math.sign(shin[0]) || -dir, 0, 0] : [dir, 0, 0];
+      const w = faceDown ? 1 : 1 - Math.min(1, Math.max(0, (ft[1] - 1.5) / 5));   // 1 = on the ground
+      const x = V.norm(V.lerp(toeS, xF, w));
+      const y = orth(V.lerp(upS, [0, 1, 0], w), x) || [0, 1, 0];
+      const z = V.cross(x, y);
+      let base = V.add(ft, V.mul(x, 2.5));
+      const lowest = base[1] - Math.abs(x[1]) * 5.5 - Math.abs(z[1]) * 3.2;
+      if (lowest < 0) base = [base[0], base[1] - lowest, base[2]];
+      draw(meshes.box, M.basis(V.mul(x, 11), V.mul(y, 4.6), V.mul(z, 6.4), V.add(base, V.mul(y, 2.6))), COL.shoe);
+      draw(meshes.box, M.basis(V.mul(x, 11.6), V.mul(y, 1.6), V.mul(z, 6.8), V.add(base, V.mul(y, .8))), COL.sole);
+    };
+    leg(hipL, kneeL, footL); leg(hipR, kneeR, footR);
+
+    // torso: tapered jersey box with decals front and back
+    const hipMid = to3(P.hip, 0), neckMid = to3(P.neck, 0), tl = V.len(V.sub(neckMid, hipMid));
+    const tc = V.lerp(hipMid, neckMid, .5), right = V.norm(V.cross(fwd, up));
+    draw(meshes.box, M.basis(V.mul(fwd, 11.4 + .5 * breath), V.mul(up, tl + 4), V.mul(right, 17.4), V.add(tc, V.mul(up, -1))), COL.jersey);
+    draw(meshes.box, M.basis(V.mul(fwd, 12.4), V.mul(up, 7), V.mul(right, 18), V.add(hipMid, V.mul(up, 1))), COL.shorts); // waistband
+    draw(meshes.box, M.basis(V.mul(fwd, 11.2), V.mul(up, 1.4), V.mul(right, 17.6), V.add(V.add(neckMid, V.mul(up, 1.4)), lift)), COL.trim); // shoulder trim
+    for (const s of [-1, 1]) draw(meshes.box, M.basis(V.mul(fwd, 1.8), V.mul(up, tl * .7), V.mul(right, 1.2), V.add(V.add(tc, V.mul(right, s * 8.8)), V.mul(up, -tl * .12))), COL.trim); // side stripes
+    draw(meshes.decal, M.basis(V.mul(fwd, 1), V.mul(up, tl * .82), V.mul(right, 15), V.add(V.add(tc, V.mul(fwd, 5.95 + .25 * breath)), V.mul(up, .5))), null, texes.jersey, { decal: true });
+    draw(meshes.decal, M.basis(V.mul(fwd, -1), V.mul(up, tl * .82), V.mul(right, -15), V.add(V.add(tc, V.mul(fwd, -5.95 - .25 * breath)), V.mul(up, .5))), null, texes.back, { decal: true });
+
+    // arms (sleeveless): skin with white armhole trim
+    const arm = (sh, el, hd) => {
+      seg(sh, el, 3.1, COL.skin); sphere(el, 3, COL.skin); seg(el, hd, 2.8, COL.skin); sphere(sh, 3.6, COL.skin);
+      // hand: a small mitt that carries on from the forearm, with a thumb
+      const fa = V.norm(V.sub(hd, el)); let hx = V.norm(V.cross(fa, fwd)); if (!isFinite(hx[0]) || V.len(hx) < .1) hx = [0, 0, 1];
+      const hz = V.cross(hx, fa), hc = V.add(hd, V.mul(fa, 1.6));
+      draw(meshes.head, M.basis(V.mul(hx, 2.2), V.mul(fa, 3.4), V.mul(hz, 2.9), hc), COL.skin);
+      sphere(V.add(V.add(hd, V.mul(fa, .6)), V.mul(hz, 2.4)), 1.2, COL.skin);
+    };
+    if (front) {
+      const cx = to3(P.neck, 0)[0], hy = to3(P.hip, 0)[1], ny = to3(P.neck, 0)[1] + 4;
+      const fix = (sh, el, hd) => {
+        const inFront = p => Math.abs(p[0] - cx) < 10 && p[1] > hy && p[1] < ny;
+        const crossed = Math.sign(hd[0] - cx) !== Math.sign(sh[0] - cx);
+        const pe = crossed || inFront(el) ? 7 : 0, ph = crossed || inFront(hd) ? 8 : 0;
+        return [V.add(el, V.mul(fwd, pe)), V.add(hd, V.mul(fwd, ph))];
+      };
+      const [eL2, hL2] = fix(shL, elL, hL), [eR2, hR2] = fix(shR, elR, hR);
+      arm(shL, eL2, hL2); arm(shR, eR2, hR2);
+    } else { arm(shL, elL, hL); arm(shR, elR, hR); }
+
+    // neck, head, hair, eyes
+    const headC = V.add(to3(P.head, 0), V.mul(up, 1));
+    seg(neckMid, V.lerp(neckMid, headC, .55), 2.4, COL.skin);
+    const HR = 7.8;
+    sphere(headC, HR, COL.skin);
+    const hairC = V.add(V.add(headC, V.mul(up, 1.9)), V.mul(fwd, -1.1));
+    draw(meshes.hair, M.basis(V.mul(right, 8.5), V.mul(up, 7.1), V.mul(fwd, 8.3), hairC), COL.hair);
+    draw(meshes.hair, M.basis(V.mul(right, 7.6), V.mul(up, 2.5), V.mul(fwd, 3.9), V.add(V.add(headC, V.mul(up, 4.9)), V.mul(fwd, 4.4))), COL.hair); // fringe
+    for (const s of [-1, 1]) {
+      const e = V.add(V.add(headC, V.mul(up, .9)), V.mul(right, s * 2.8));
+      sphere(V.add(e, V.mul(fwd, 6.95)), 1.05, [.97, .95, .92]);
+      sphere(V.add(e, V.mul(fwd, 7.6)), .62, COL.eye);
+      sphere(V.add(V.add(headC, V.mul(right, s * 7.8)), V.mul(fwd, -.4)), 1.7, COL.skin); // ears
+    }
+    draw(meshes.box, M.basis(V.mul(fwd, 1.2), V.mul(up, .9), V.mul(right, 4), V.add(V.add(headC, V.mul(fwd, 7.3)), V.mul(up, -3.1))), [.62, .3, .27]); // smile
+    sphere(V.add(V.add(headC, V.mul(fwd, 7.8)), V.mul(up, -.8)), .95, COL.skin); // nose
+    draw(meshes.box, M.basis(V.mul(fwd, 2.4), V.mul(up, 3), V.mul(right, 4), V.add(V.add(headC, V.mul(fwd, -1)), V.mul(up, -6.4))), COL.trim); // V-neck trim
+
+    if (ballPos && bz >= 0) { /* drawn already; depth handles order */ }
+  }
+
+  function frame(ms) {
+    raf = 0;
+    if (!cur || !canvas.isConnected) return;
+    resize(); drawScene(ms / 1000 - t0);
+    raf = requestAnimationFrame(frame);
+  }
+  function resize() {
+    const r = canvas.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(2, Math.round(r.width * dpr)), h = Math.max(2, Math.round(r.height * dpr));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  }
+
+  return {
+    // returns true if the 3D player is showing, false to fall back to the stick figure
+    show(el, name, stillAt) {
+      if (failed || !window.Fig || !Fig.sample(name, 0)) return false;
+      try { if (!gl) init(); } catch (e) { failed = true; return false; }
+      cur = name; host = el;
+      if (canvas.parentNode !== el) { el.innerHTML = ''; el.appendChild(canvas); }
+      t0 = Math.random() * 3;
+      if (stillAt != null) { resize(); still = true; drawScene(stillAt); still = false; return true; }
+      if (!raf) raf = requestAnimationFrame(frame);
+      return true;
+    },
+    hide() { cur = null; if (raf) cancelAnimationFrame(raf); raf = 0; },
+    get ok() { return !failed; },
+  };
+})();
+
+</script>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  const WARMUP = [
+    { n: 'Jog on the spot', c: 'Easy pace, loose arms' },
+    { n: 'High knees', c: 'Knees up to hip height, stay light' },
+    { n: 'Arm circles', c: '15 seconds forwards, then backwards' },
+    { n: 'Leg swings — right leg', fig: 'Leg swings', len: 20, c: 'Hold a wall, swing your right leg front to back' },
+    { n: 'Leg swings — left leg', fig: 'Leg swings|L', len: 20, c: 'Turn around, now swing your left leg' },
+    { n: 'Side shuffles', c: 'Stay low, shuffle left and right' },
+    { n: 'Butt kicks', c: 'Heels up to your bum, quick feet' },
+    { n: 'Walking lunge & twist', c: 'Step forward with your left leg and twist over it, then your right. Keep swapping' },
+  ];
+  // one-sided stretches are done right side then left side (20 s each); two-sided stretches hold 30 s.
+  // fig = the animation (|L = mirrored). Calf and hip flexor animations stretch the back leg, so their mirror is the right side.
+  const COOLDOWN = [
+    { n: 'Quad stretch — right leg', fig: 'Quad stretch', len: 20, c: 'Hold your right foot behind you, knees together' },
+    { n: 'Quad stretch — left leg', fig: 'Quad stretch|L', len: 20, c: 'Now hold your left foot behind you' },
+    { n: 'Hamstring stretch', c: 'Legs straight, reach for your toes, no bouncing' },
+    { n: 'Calf stretch — right leg', fig: 'Calf stretch|L', len: 20, c: 'Hands on a wall, right leg back, heel down' },
+    { n: 'Calf stretch — left leg', fig: 'Calf stretch', len: 20, c: 'Swap: left leg back, heel down' },
+    { n: "Child's pose", c: 'Knees down, arms long, relax your back' },
+    { n: 'Hip flexor stretch — right side', fig: 'Hip flexor stretch|L', len: 20, c: 'Kneel on your right knee, push your hips forward gently' },
+    { n: 'Hip flexor stretch — left side', fig: 'Hip flexor stretch', len: 20, c: 'Swap: kneel on your left knee, hips forward' },
+    { n: 'Shoulder stretch — right arm', fig: 'Shoulder stretch', len: 20, c: 'Pull your right arm across your chest' },
+    { n: 'Shoulder stretch — left arm', fig: 'Shoulder stretch|L', len: 20, c: 'Now your left arm across your chest' },
+  ];
+
+  const E = (n, c, o) => Object.assign({ n, c }, o);
+  // a one-handed drill: right hand for its first 2 rounds, left hand for its last 2 (fig = right-handed animation)
+  const H = (n, c, fig) => E(n, c, { hand: 1, fig: fig || n });
+  // Core strength blocks: every other day (Mon, Wed, Fri). Saturday is game day, Sunday is recovery.
+  const CORE_A = [E('Push-ups', 'Knees down is fine. Keep your body straight'), E('Sit-ups', 'Knees bent, arms crossed on your chest, curl up slowly. No pulling on your neck')];
+  const CORE_B = [E('Squats', 'Sit back like a chair, chest up, knees follow toes'), E('V-hold', 'Sit, lean back and lift your feet so your body makes a V. Arms reach forward. Hold it, keep breathing')];
+  // Every day: 2 ball-handling blocks first (fresh hands), then 3 blocks for the day's focus, then a ball finisher.
+  const WORKOUTS = {
+    mon: {
+      name: 'Strong Body', about: 'Strength for jumping, landing and holding your spot under the ring.', gear: 'Ball',
+      ball: [
+        [E('Low dribble — right', 'Ankle height, as fast as you can control it'), E('Low dribble — left', 'Same again, weaker hand')],
+        [E('Figure 8 dribble', 'Dribble through and around your legs'), E('Ball wraps', 'Around your head, waist, then knees. Keep it moving')],
+      ],
+      focus: [
+        CORE_A,
+        CORE_B,
+        [E('Glute bridges', 'Lie on your back, push hips up, squeeze'), E('Superman hold', 'Lie on your tummy, lift arms and legs, hold')],
+      ],
+      finish: [E('Pound dribble — right', 'Hard dribbles at knee height, eyes up'), E('Pound dribble — left', 'Same again with your weaker hand')],
+    },
+    tue: {
+      name: 'Speed & Footwork', about: 'Defence, first-step speed and running fitness for the last quarter. Set 2 cones about 3 big steps apart.', gear: 'Ball + cones',
+      ball: [
+        [E('In-and-out — right', 'Fake the crossover, keep it in the same hand'), E('In-and-out — left', 'Same move, weaker hand')],
+        [E('Speed dribble — right', 'Dribble cone to cone fast, ball out in front. Same hand there and back'), E('Speed dribble — left', 'Same again with your left, there and back')],
+      ],
+      focus: [
+        [E('Defensive slides', 'Low stance, slide cone to cone, never cross your feet'), E('Fast feet', 'Tiny quick steps on your toes, stay low')],
+        [E('Sprint & backpedal', 'Sprint to the cone, backpedal back, chest up'), E('Closeouts', 'Sprint to the cone, chop your feet, hands up')],
+        [E('Mountain climbers', 'Hands under shoulders, run your knees in'), E('Bear crawl', 'Hands and feet, knees just off the ground')],
+      ],
+      finish: [H('Dribble & catch', 'Five hard dribbles, catch, chin the ball, go again'), E('Cone weave', 'Dribble in and out of your cones, change hands each time')],
+    },
+    wed: {
+      name: 'Core Strength', about: 'A strong middle helps you finish through contact and hold your spot.', gear: 'Ball',
+      ball: [
+        [E('V-dribble — right', 'Push the ball side to side in a V in front of you'), E('V-dribble — left', 'Same again, weaker hand')],
+        [E('Behind the back', 'Wrap the ball behind your hips to the other hand'), E('Fingertip taps', 'Tap the ball fast between your fingertips, arms up')],
+      ],
+      focus: [
+        CORE_A,
+        CORE_B,
+        [E('Side plank — left', 'Hips up, straight line, bottom knee down is fine'), E('Side plank — right', 'Same on the other side')],
+      ],
+      finish: [E('Spider dribble', 'Ball between your feet, quick taps front and back with both hands'), H('Low dribble', 'Ankle height, keep it tight', 'Low dribble — right')],
+    },
+    thu: {
+      name: 'Jump & Land', about: 'Spring and safe landings for rebounds. Land quiet like a cat every time. Set 2 cones about 3 big jumps apart.', gear: 'Ball + cones',
+      ball: [
+        [H('Kneeling dribble', 'On your knees, dribble around your body'), H('Sitting dribble', 'Sit down, dribble under your legs and around')],
+        [H('Hesitation dribble', 'Dribble, rise up and pause, then step through with your front foot. Back foot stays planted'), H('Retreat dribble', 'Two steps back, protect the ball with your arm, then attack forward')],
+      ],
+      focus: [
+        [E('Squat jumps', 'Small jumps, land soft and quiet'), E('Calf raises', 'Up onto your toes, slow down')],
+        [E('Cone broad jumps', 'Swing your arms back, jump forward, land low and quiet. Turn at the cone and jump back'), E('Pogo hops', 'Small fast bounces on your toes, stiff ankles')],
+        [E('Rebound jumps', 'Jump, reach high with two hands, land and reset'), E('Squat hold', 'Hold low in a squat, chest up')],
+      ],
+      finish: [E('Figure 8 dribble', 'Dribble through and around your legs'), E('Ball wraps', 'Around your head, waist, then knees. Keep it moving')],
+    },
+    fri: {
+      name: 'Core & Balance', about: 'Core strength and balance, with no jumping so your legs are fresh for tomorrow.', gear: 'Ball',
+      ball: [
+        [E('Pound dribble — right', 'Hard dribbles at knee height, eyes up'), E('Pound dribble — left', 'Same again with your weaker hand')],
+        [E('Crossovers', 'Low and quick, ball stays below your knees'), E('Between the legs', 'Wide stance, bounce it through, catch, go back')],
+      ],
+      focus: [
+        CORE_A,
+        CORE_B,
+        [E('Single-leg balance', 'Stand on one leg, pass the ball around your waist'), E('Bird dog', 'On hands and knees, reach opposite arm and leg out')],
+      ],
+      finish: [H('Low dribble', 'Ankle height, keep it tight', 'Low dribble — right'), H('V-dribble', 'Push the ball side to side in a V in front of you', 'V-dribble — right')],
+    },
+    sat: {
+      name: 'Game Day Prep', about: 'Game day. Lots of easy touches on the ball and quick feet to wake your body up. Sharp, not tiring. Do it a few hours before the game.', gear: 'Ball + cones',
+      ball: [
+        [E('Crossover combo', 'Crossover, then between the legs, repeat'), E('Two-move attack', 'Pick two moves, attack a cone, back out, repeat')],
+        [H('Hesitation dribble', 'Dribble, rise up and pause, then step through with your front foot. Back foot stays planted'), H('Retreat dribble', 'Two steps back, protect the ball with your arm, then attack forward')],
+      ],
+      focus: [
+        [H('Dribble walk', 'Walk forward and back while dribbling, eyes up'), E('Slide dribble', 'Defensive slide while you dribble low with the hand on the side you are sliding to')],
+        [E('Defensive slides', 'Low stance, never cross your feet. Smooth, not flat out'), E('Jump stop & pivot', 'Two-foot jump stop, then front and reverse pivots')],
+        [E('Fingertip taps', 'Tap the ball fast between your fingertips, arms up'), E('Figure 8 wraps', 'Pass the ball through and around your legs, no dribble')],
+      ],
+      finish: [H('Speed dribble', 'Cone to cone, push it out in front. Same hand there and back', 'Speed dribble — right'), E('Behind the back', 'Wrap the ball behind your hips to the other hand')],
+    },
+    sun: {
+      name: 'Recovery Day', about: 'The day after the game. Easy ball work and stretching so your body recovers. Smooth and slow.', gear: 'Ball',
+      ball: [
+        [E('Ball wraps', 'Head, waist, knees, ankles, then back up'), E('Figure 8 wraps', 'Pass the ball through and around your legs, no dribble')],
+        [H('Pound dribble', 'Slow and strong, knee height', 'Pound dribble — right'), H('Eyes-closed dribble', 'Close your eyes and feel the ball')],
+      ],
+      focus: [
+        [E('Hip circles', 'Hands on hips, big slow circles each way'), E('Cat-cow', 'On hands and knees, round your back then arch it')],
+        [E('Inchworms', 'Walk your hands out to a plank, then walk your feet in'), E('Deep squat hold', 'Sit low, heels down, elbows push knees out')],
+        [E('Lunge & reach', 'Step into a lunge, reach both arms up'), E('Arm swings', 'Big swings across your chest and back')],
+      ],
+      finish: [E('Fingertip taps', 'Tap the ball fast between your fingertips, arms up'), H('V-dribble', 'Slow and controlled', 'V-dribble — right')],
+    },
+  };
+  // Rainy day: indoors, ball held only (no bouncing, no throwing)
+  WORKOUTS.rain = {
+    name: 'Rainy Day Indoors', about: 'For wet days when the balcony is slippery. Core and movement work inside. The ball is held only: no bouncing, no throwing.', gear: 'Ball (hold only)',
+    blocks: [
+      { k: 'ball', label: 'Ball control', p: [E('Ball wraps', 'Around your head, waist, then knees. Keep it moving, no dropping'), E('Figure 8 wraps', 'Pass the ball through and around your legs, no bouncing')] },
+      { k: 'ball', label: 'Ball control', p: [E('Fingertip taps', 'Tap the ball between your fingertips, arms up'), E('Ball squeeze hold', 'Squeeze the ball hard between your hands at your chest')] },
+      { k: 'core', p: [E('Ball sit-ups', 'Hold the ball on your chest, knees bent, curl up slowly'), E('V-hold', 'Sit, lean back and lift your feet so your body makes a V. Arms reach forward. Hold it, keep breathing')] },
+      { k: 'core', p: [E('Ball squats', 'Hold the ball at your chest, sit back, chest up'), E('Push-ups', 'Knees down is fine. Keep your body straight')] },
+      { k: 'focus', label: 'Movement', p: [E('Fast feet', 'Tiny quick steps on the spot, stay low'), E('Mountain climbers', 'Hands under shoulders, run your knees in')] },
+      { k: 'core', p: [E('Seated ball twists', 'Sit, lean back a little, move the ball from hip to hip'), E('Superman hold', 'Lie on your tummy, lift arms and legs, hold')] },
+    ],
+  };
+  WORKOUTS.sunRain = {
+    name: 'Rainy Recovery', about: 'Recovery day inside. Easy ball work and stretching, ball held only: no bouncing, no throwing.', gear: 'Ball (hold only)',
+    blocks: [
+      { k: 'ball', label: 'Ball control', p: [E('Ball wraps', 'Head, waist, knees, ankles, then back up'), E('Figure 8 wraps', 'Pass the ball through and around your legs, no bouncing')] },
+      { k: 'ball', label: 'Ball control', p: [E('Fingertip taps', 'Tap the ball between your fingertips, arms up'), E('Ball squeeze hold', 'Squeeze the ball hard between your hands at your chest')] },
+      ...WORKOUTS.sun.focus.map(p => ({ k: 'focus', p })),
+      { k: 'ball', label: 'Ball control', p: [E('Single-leg balance', 'Stand on one leg, pass the ball around your waist'), E('Ball squeeze hold', 'Squeeze the ball hard between your hands at your chest')] },
+    ],
+  };
+  // What to have ready before starting
+  const KIT = {
+    mon: ['Basketball', 'Mat or soft grass', 'Water bottle', 'Wall or rail to hold'],
+    tue: ['Basketball', '2 cones', 'Mat or soft grass', 'Water bottle', 'Wall or rail to hold', 'Room to sprint about 5 m'],
+    wed: ['Basketball', 'Mat or soft grass', 'Water bottle', 'Wall or rail to hold'],
+    thu: ['Basketball', '2 cones', 'Water bottle', 'Wall or rail to hold', 'Flat, non-slip ground for jumping'],
+    fri: ['Basketball', 'Mat or soft grass', 'Water bottle', 'Wall or rail to hold'],
+    sat: ['Basketball', '2 cones', 'Water bottle', 'Wall or rail to hold'],
+    sun: ['Basketball', 'Mat or soft grass', 'Water bottle', 'Wall or rail to hold'],
+    rain: ['Basketball (hold only)', 'Mat or carpet', 'Water bottle', 'Wall to hold', 'Clear space indoors'],
+    sunRain: ['Basketball (hold only)', 'Mat or carpet', 'Water bottle', 'Wall to hold'],
+  };
+  for (const w of Object.values(WORKOUTS)) if (!w.blocks) w.blocks = [
+    ...w.ball.map(p => ({ k: 'ball', p })),
+    ...w.focus.map(p => ({ k: p === CORE_A || p === CORE_B ? 'core' : 'focus', p })),
+    { k: 'ball', p: w.finish, fin: true },
+  ];
+
+  // Mon..Sun
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const PLAN = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+  const PLANK_SETS = 3, PLANK_LEN = 45, PLANK_FINISH = { n: 'Plank', c: 'Straight line head to heels, squeeze your tummy, keep breathing' };
+  const WORK = 20, WARM_LEN = 30, COOL_LEN = 30, COOL_REST = 5, BLOCK_BREAK = 30, READY = 10, ROUNDS = 8;
+
+  // ---- storage helpers
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+  const now = new Date();
+  const todayIdx = (now.getDay() + 6) % 7;
+  const monday = new Date(now); monday.setDate(now.getDate() - todayIdx);
+  const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const weekKey = 'wk-' + ymd(monday);
+  // the old key was based on UTC and could land on the Sunday before; fold anything saved there into this week
+  (() => { const prev = new Date(monday); prev.setDate(prev.getDate() - 1); const old = prev.toISOString().slice(0, 10), ok = ymd(monday);
+    for (const pre of ['wk-', 'rain-wk-', 'kit-wk-', 'shoot-wk-', 'lay-wk-', 'pu-wk-']) {
+      const a = store.get(pre + old, null); if (a && typeof a === 'object' && ymd(new Date(old + 'T12:00:00')) !== ok) { store.set(pre + ok, Object.assign({}, a, store.get(pre + ok, {}))); try { localStorage.removeItem(pre + old); } catch (e) {} }
+    } })();
+  let done = store.get(weekKey, {});
+  // ---------- points, stats and surprise rewards (kept on this iPad)
+  // Workout (needs 15+ min of real, running training time): per block 1 done + 1 no skips + 1 no pauses (6 blocks = 18),
+  // plus 4 per full plank (3 = 12) → 30. Bonus round finished: 20 (+2 for a new best). Streak: 5 × days in a row, from day 2.
+  // All 7 days in a week: +10. Points count once a day for each; a parent can approve one extra scored run.
+  // Surprise rewards: 250, then 500, then every 500.
+  const MIN_SCORED = 15 * 60, BLOCK_DONE_MIN = 6, PLANK_PTS = 4, ROUND_PTS = 20, PB_PTS = 2, STREAK_PTS = 5, STREAK_CAP = 5, WEEK_PTS = 10;   // streak bonus = 5 × days in a row (2 days 10, 3 days 15 ...)
+  let ledger = store.get('ledger', []);          // { d: 'YYYY-MM-DD', k: 'workout'|'shoot'|'lay'|'streak'|'week'|'pb', pts, extra, why }
+  let sessions = store.get('sessions', []);      // one record per run (workouts and bonus rounds)
+  let extraOK = store.get('extraOK', {});        // parent-approved next scored run: { workout, shoot, lay }
+  let rewardsSeen = store.get('rewardsSeen', 0); // how many surprise rewards have been celebrated
+  const saveLedger = () => { if (ledger.length > 3000) ledger = ledger.slice(-3000); store.set('ledger', ledger); };
+  const saveSessions = () => { if (sessions.length > 1500) sessions = sessions.slice(-1500); store.set('sessions', sessions); };
+  const today = () => ymd(new Date());
+  const totalPts = () => ledger.reduce((a, e) => a + (e.pts || 0), 0);
+  const rewardAt = n => n <= 1 ? 250 : (n - 1) * 500;              // 1st 250, 2nd 500, 3rd 1000, 4th 1500 ...
+  const rewardsEarned = p => { let n = 0; while (p >= rewardAt(n + 1)) n++; return n; };
+  const scoredOn = (d, k) => ledger.some(e => e.d === d && e.k === k && e.pts > 0 && !e.extra);
+  const addDays = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return ymd(x); };
+  function streakNow() {
+    let n = 0, d = today();
+    if (!scoredOn(d, 'workout')) d = addDays(d, -1);
+    while (scoredOn(d, 'workout')) { n++; d = addDays(d, -1); }
+    return n;
+  }
+  function bestStreak() {
+    const days = [...new Set(ledger.filter(e => e.k === 'workout' && e.pts > 0 && !e.extra).map(e => e.d))].sort();
+    let best = 0, run = 0, prev = null;
+    for (const d of days) { run = prev && addDays(prev, 1) === d ? run + 1 : 1; best = Math.max(best, run); prev = d; }
+    return best;
+  }
+  // award points for a finished run; returns { pts, items: [[label, pts]], note }
+  function award(kind, base, items, extraItems) {
+    const d = today();
+    if (scoredOn(d, kind)) {
+      if (!extraOK[kind]) return { pts: 0, items: [], note: 'practice' };
+      extraOK[kind] = false; store.set('extraOK', extraOK);
+      ledger.push({ d, k: kind, pts: base, extra: true, why: 'Parent-approved extra run' }); saveLedger();
+      return { pts: base, items: items.concat([['Parent-approved extra run', 0]]), note: 'extra' };
+    }
+    ledger.push({ d, k: kind, pts: base }); let pts = base; items = items.slice();
+    for (const [lab, p, k] of (extraItems || [])) { if (p > 0) { ledger.push({ d, k, pts: p, why: lab }); pts += p; items.push([lab, p]); } }
+    saveLedger();
+    return { pts, items, note: 'scored' };
+  }
+  function weekDaysScored() {
+    const out = new Set();
+    for (let i = 0; i < 7; i++) { const d = addDays(ymd(monday), i); if (scoredOn(d, 'workout')) out.add(d); }
+    return out.size;
+  }
+
+  // ---- session tracker (only the timer running counts: pauses, count-ins and skipped time don't)
+  let trk = null;
+  function trkStart(day, key) { trk = { d: today(), day, key, name: WORKOUTS[key].name, active: 0, last: null, pauses: 0, pauseMs: 0, pausedAt: null, skips: 0, skipped: {}, blocks: {}, planks: 0, nb: WORKOUTS[key].blocks.length }; }
+  function trkRun() { if (trk) { if (trk.pausedAt) { trk.pauseMs += Date.now() - trk.pausedAt; trk.pausedAt = null; } trk.last = performance.now(); } }
+  function trkHalt() { if (trk && trk.last != null) { trk.active += (performance.now() - trk.last) / 1000; trk.last = null; } }
+  function trkTick() { if (trk && trk.last != null) { const n = performance.now(); trk.active += (n - trk.last) / 1000; trk.last = n; } }
+  const blk = b => trk.blocks[b] || (trk.blocks[b] = { done: 0, skips: 0, pauses: 0 });
+  function trkDone(s) { if (!trk || s.p !== 'work') return; if (s.b) blk(s.b).done++; if (s.kind === 'Plank finisher') trk.planks++; }
+  function trkSkip(s) { if (!trk || s.p !== 'work') return; trk.skips++; trk.skipped[s.n] = (trk.skipped[s.n] || 0) + 1; if (s.b) blk(s.b).skips++; }
+  function trkPause(s) { if (!trk) return; trk.pauses++; trk.pausedAt = Date.now(); if (s && s.b && (s.p === 'work' || s.p === 'rest')) blk(s.b).pauses++; }
+
+  // finish a workout: work out points, save the session, return the result for the done screen
+  function scoreWorkout(completed) {
+    trkHalt();
+    const t = trk; if (!t) return null;
+    let bDone = 0, bClean = 0, bCalm = 0;
+    for (let b = 1; b <= t.nb; b++) { const B = t.blocks[b]; if (B && B.done >= BLOCK_DONE_MIN) { bDone++; if (!B.skips) bClean++; if (!B.pauses) bCalm++; } }
+    const plankPts = Math.min(3, t.planks) * PLANK_PTS;
+    const base = bDone + bClean + bCalm + plankPts;
+    const items = [['Blocks finished', bDone], ['Blocks with no skips', bClean], ['Blocks with no pauses', bCalm], [`Planks held (${Math.min(3, t.planks)} of 3)`, plankPts]];
+    let res;
+    if (!completed) res = { pts: 0, items: [], note: 'ended' };
+    else if (t.active < MIN_SCORED) res = { pts: 0, items: [], note: 'short' };
+    else {
+      const first = !scoredOn(today(), 'workout');
+      const extras = [];
+      if (first) {
+        if (scoredOn(addDays(today(), -1), 'workout')) { const n = streakNow() + 1, m = Math.min(n, STREAK_CAP); extras.push([`Streak bonus (${n} days in a row${n > STREAK_CAP ? ', max' : ''})`, STREAK_PTS * m, 'streak']); }
+        if (weekDaysScored() === 6 && !ledger.some(e => e.k === 'week' && e.d >= ymd(monday))) extras.push(['Full week bonus: all 7 days!', WEEK_PTS, 'week']);
+      }
+      res = award('workout', base, items, extras);
+    }
+    const rec = { d: t.d, type: 'workout', name: t.name, active: Math.round(t.active), pauses: t.pauses, pauseSecs: Math.round(t.pauseMs / 1000), skips: t.skips, skipped: t.skipped,
+      blocks: bDone, clean: bClean, calm: bCalm, planks: Math.min(3, t.planks), completed: !!completed, pts: res.pts, note: res.note };
+    sessions.push(rec); saveSessions();
+    trk = null;
+    return Object.assign(res, { rec });
+  }
+  function scoreRound(m, secs, isPB) {
+    const res = award(m, ROUND_PTS, [[RD[m].title + ' finished', ROUND_PTS]], isPB ? [['New personal best', PB_PTS, 'pb']] : []);
+    if (res.note === 'extra' && isPB) { ledger.push({ d: today(), k: 'pb', pts: PB_PTS, why: 'New personal best' }); saveLedger(); res.pts += PB_PTS; res.items.push(['New personal best', PB_PTS]); }
+    sessions.push({ d: today(), type: m, name: RD[m].title, active: Math.round(secs), completed: true, pts: res.pts, note: res.note }); saveSessions();
+    return res;
+  }
+
+  // ---- surprise reward track
+  const giftSVG = (open, cls) => `<svg class="gift ${cls || ''}${open ? ' open' : ''}" viewBox="0 0 48 48" aria-hidden="true">
+      <g class="lid"><rect x="5" y="13" width="38" height="9" rx="2"></rect><rect class="rib" x="21" y="13" width="6" height="9"></rect>
+        <path class="bow" d="M24 13 C18 3 9 7 14 12 C16 14 21 13 24 13 Z M24 13 C30 3 39 7 34 12 C32 14 27 13 24 13 Z"></path></g>
+      <rect x="8" y="22" width="32" height="22" rx="2"></rect><rect class="rib" x="21" y="22" width="6" height="22"></rect>
+      ${open ? '<g class="spark"><circle cx="12" cy="6" r="1.6"></circle><circle cx="38" cy="4" r="1.6"></circle><circle cx="44" cy="15" r="1.3"></circle><circle cx="4" cy="16" r="1.3"></circle></g>' : ''}</svg>`;
+  function rewardTrack(p, compact) {
+    const n = rewardsEarned(p), lo = n ? rewardAt(n) : 0, hi = rewardAt(n + 1), pct = Math.round((p - lo) / (hi - lo) * 100);
+    return `<div class="rtrack${compact ? ' compact' : ''}">
+      <div class="rt-gift">${giftSVG(false, 'wiggle')}</div>
+      <div class="rt-body">
+        <div class="rt-top"><b>Mystery reward ${n + 1}</b><span>${p.toLocaleString()} / ${hi.toLocaleString()} points</span></div>
+        <div class="rt-bar"><i style="width:${pct}%"></i></div>
+        <div class="rt-sub">${(hi - p).toLocaleString()} points to go. What's inside? Keep training to find out.${n ? ` · ${n} surprise${n > 1 ? 's' : ''} unlocked so far` : ''}</div>
+      </div></div>`;
+  }
+
+  // ---- confetti for the big moments
+  function confetti(ms) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const c = document.createElement('canvas'); c.className = 'confetti'; document.body.appendChild(c);
+    const g = c.getContext('2d'), dpr = Math.min(2, window.devicePixelRatio || 1);
+    const W = c.width = innerWidth * dpr, H = c.height = innerHeight * dpr;
+    const css = getComputedStyle(document.documentElement), cols = ['--ball', '--rest', '--warm', '--brk', '--cool', '--fg'].map(v => css.getPropertyValue(v).trim() || '#f2761d');
+    const P = Array.from({ length: 140 }, () => ({ x: Math.random() * W, y: -Math.random() * H * .5, vx: (Math.random() - .5) * 3 * dpr, vy: (2 + Math.random() * 4) * dpr,
+      r: (4 + Math.random() * 5) * dpr, a: Math.random() * 6, va: (Math.random() - .5) * .3, c: cols[(Math.random() * cols.length) | 0] }));
+    const t0 = performance.now();
+    (function f(t) {
+      g.clearRect(0, 0, W, H);
+      for (const p of P) { p.x += p.vx; p.y += p.vy; p.vy += .03 * dpr; p.a += p.va; g.save(); g.translate(p.x, p.y); g.rotate(p.a); g.fillStyle = p.c; g.fillRect(-p.r, -p.r * .45, p.r * 2, p.r * .9); g.restore(); }
+      if (t - t0 < (ms || 3500)) requestAnimationFrame(f); else c.remove();
+    })(t0);
+  }
+  // count the big number up for a bit of fun
+  function countUp(el, to, pre) {
+    const t0 = performance.now(), dur = 900;
+    (function f(t) { const k = Math.min(1, (t - t0) / dur); el.textContent = (pre || '') + Math.round(to * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(f); })(t0);
+  }
+
+  // the points panel shown when a workout or bonus round ends
+  function pointsPanel(res, before) {
+    const after = totalPts(), newRewards = rewardsEarned(after) - Math.max(rewardsEarned(before), rewardsSeen);
+    let head;
+    if (res.note === 'short') head = `<p class="pp-note">Points need at least 15 minutes of real training. This one was ${Math.round((res.rec ? res.rec.active : 0) / 60)} min, so no points this time.</p>`;
+    else if (res.note === 'practice') head = `<p class="pp-note">Practice run: today's points are already banked. It still counts towards your training hours. If you want another run to score, ask Dad.</p>`;
+    else if (res.note === 'ended') head = `<p class="pp-note">Session ended early, so no points. Your training time still counts.</p>`;
+    else head = `<ul class="pp-items">${res.items.filter(i => i[1] || /Parent/.test(i[0])).map(([l, p]) => `<li><span>${l}</span><b>${p ? '+' + p : ''}</b></li>`).join('')}</ul>`;
+    let surprise = '';
+    if (newRewards > 0) {
+      const n = rewardsEarned(after);
+      rewardsSeen = n; store.set('rewardsSeen', rewardsSeen);
+      surprise = `<div class="pp-surprise">${giftSVG(true, 'pop')}<div><b>Mystery reward ${n} unlocked!</b><span>Show Dad this screen. You earned it.</span></div></div>`;
+      setTimeout(() => confetti(5000), 250);
+    } else if (res.pts > 0) setTimeout(() => confetti(2200), 250);
+    return `<div class="pp">${head}${surprise}${rewardTrack(after, true)}</div>`;
+  }
+
+  // ---- stats for the home screen
+  function statsHTML() {
+    const w = sessions.filter(s => s.type === 'workout'), all = sessions;
+    const hrs = all.reduce((a, s) => a + (s.active || 0), 0) / 3600, weekSecs = all.filter(s => s.d >= ymd(monday)).reduce((a, s) => a + (s.active || 0), 0);
+    const doneW = w.filter(s => s.completed && s.note !== 'short'), pauses = w.reduce((a, s) => a + (s.pauses || 0), 0), skips = w.reduce((a, s) => a + (s.skips || 0), 0);
+    const sk = {}; w.forEach(s => Object.entries(s.skipped || {}).forEach(([k, v]) => sk[k] = (sk[k] || 0) + v));
+    const most = Object.entries(sk).sort((a, b) => b[1] - a[1])[0];
+    const clean = doneW.reduce((a, s) => a + (s.clean || 0), 0), planks = doneW.reduce((a, s) => a + (s.planks || 0), 0);
+    const rounds = all.filter(s => s.type !== 'workout').length;
+    const hm = s => { const m = Math.round(s / 60); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
+    const tiles = [
+      ['Total training', hrs >= 1 ? `${hrs.toFixed(1)} h` : hm(hrs * 3600)], ['This week', hm(weekSecs)], ['Workouts finished', doneW.length],
+      ['Current streak', `${streakNow()} day${streakNow() === 1 ? '' : 's'}`], ['Best streak', `${bestStreak()} days`], ['Bonus rounds', rounds],
+      ['Clean blocks', clean], ['Planks held', planks], ['Pauses', pauses], ['Skips', skips],
+    ];
+    const recent = all.slice(-8).reverse();
+    const nice = d => { const x = new Date(d + 'T12:00:00'); return x.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }); };
+    return `<div class="st-tiles">${tiles.map(([l, v]) => `<div class="st"><b>${v}</b><small>${l}</small></div>`).join('')}</div>
+      ${most ? `<p class="st-note">Most skipped: <b>${most[0]}</b> (${most[1]} time${most[1] > 1 ? 's' : ''}). That's one to work on.</p>` : ''}
+      ${recent.length ? `<div class="st-table"><table><thead><tr><th>Day</th><th>Session</th><th>Time</th><th>Pauses</th><th>Skips</th><th>Points</th></tr></thead><tbody>
+        ${recent.map(s => `<tr><td>${nice(s.d)}</td><td>${s.name}${s.note === 'extra' ? ' <em>parent-approved</em>' : s.note === 'practice' ? ' <em>practice</em>' : s.note === 'short' ? ' <em>under 15 min</em>' : !s.completed ? ' <em>ended early</em>' : ''}</td>
+          <td>${hm(s.active || 0)}</td><td>${s.type === 'workout' ? s.pauses : '–'}</td><td>${s.type === 'workout' ? s.skips : '–'}</td><td>${s.pts ? '+' + s.pts : '0'}</td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="st-note">Finish your first session to start your stats.</p>'}`;
+  }
+
+  // rest between rounds depends on the type of block, and he can change it before starting or in any break
+  let ballRest = store.get('ballRest', 5);      // ball handling & ball finisher: 5 or 10 s
+  let workRest = store.get('workRest', 10);     // strength & focus: 10 or 20 s
+  const restLen = rk => rk === 'ball' ? ballRest : rk === 'work' ? workRest : COOL_REST;
+  let voice = store.get('voice', true);
+  let rainy = store.get('rain-' + weekKey, {});
+  let kitChecks = store.get('kit-' + weekKey, {});
+  let shots = store.get('shoot-' + weekKey, {});
+  for (const d in shots) if (!shots[d] || typeof shots[d].elapsed !== 'number') delete shots[d];
+  let shootLog = store.get('shootLog', []);   // every finished round, kept across weeks
+  const keyFor = i => rainy[i] ? (PLAN[i] === 'sun' ? 'sunRain' : 'rain') : PLAN[i];
+  let selected = PLAN[todayIdx] ? todayIdx : PLAN.findIndex((p, i) => p && i >= todayIdx);
+  if (selected < 0) selected = PLAN.findIndex(Boolean);
+
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const mini = n => `<span class="mini" data-ex="${esc(n)}" aria-hidden="true"></span>`;
+  let figName = null;
+  // Big demo beside the timer: the 3D player in his kit, or the stick figure if 3D isn't available
+  function setFig(name) {
+    const has = !!(name && Fig.has(name)), host = $('tFig');
+    $('tMid').classList.toggle('has-fig', has);
+    if (name === figName) return;
+    figName = name;
+    const P3 = window.Player3D;
+    if (has && P3 && P3.ok) {
+      let wrap = host.querySelector('.p3-wrap');
+      if (!wrap) { host.innerHTML = ''; wrap = document.createElement('div'); wrap.className = 'p3-wrap'; host.appendChild(wrap); }
+      if (P3.show(wrap, name)) { host.classList.add('is3d'); return; }
+    }
+    if (P3) P3.hide();
+    host.classList.remove('is3d'); host.innerHTML = '';
+    if (has) host.appendChild(Fig.make(name, 'big'));
+  }
+
+  function build(key) {
+    const w = WORKOUTS[key], seq = [{ p: 'ready', n: 'Get ready', c: 'Warm-up starts in a moment', len: READY }];
+    WARMUP.forEach(x => seq.push({ p: 'warm', n: x.n, fig: x.fig, c: x.c, len: x.len || WARM_LEN }));   // no rest in the warm-up
+    const kindOf = blk => blk.label || (blk.k === 'ball' ? (blk.fin ? 'Ball handling finisher' : 'Ball handling') : blk.k === 'core' ? 'Core strength' : w.name);
+    w.blocks.forEach((blk, bi) => {
+      const b = blk.p, kind = kindOf(blk), rk = blk.k === 'ball' ? 'ball' : 'work';
+      // 30-second break before every block: shows what's next and runs straight on (pause if he needs longer)
+      seq.push({ p: 'break', n: kind, rk0: rk, list: b, b: bi + 1, nb: w.blocks.length, len: BLOCK_BREAK,
+        c: bi === 0 ? (/cones/.test(w.gear) ? 'Warm-up done. Grab your ball and set out your cones.' : 'Warm-up done. Grab your ball.') : 'Grab a drink of water and get set up.' });
+      const play = (ex, round) => {
+        if (!ex.hand) return { n: ex.n, fig: ex.fig || ex.n, c: ex.c };
+        const occ = Math.floor((round - 1) / 2), left = occ >= ROUNDS / 4;
+        const switching = left && occ === ROUNDS / 4;
+        return { n: `${ex.n} — ${left ? 'left' : 'right'} hand`, fig: left ? ex.fig + '|L' : ex.fig, c: (switching ? 'Switch to your left hand. ' : '') + ex.c };
+      };
+      for (let r = 1; r <= ROUNDS; r++) {
+        const ex = play(b[(r - 1) % 2], r);
+        seq.push({ p: 'work', n: ex.n, fig: ex.fig, c: ex.c, len: WORK, r, b: bi + 1, nb: w.blocks.length, kind });
+        if (r < ROUNDS) { const nx = play(b[r % 2], r + 1); seq.push({ p: 'rest', rk, n: nx.n, fig: nx.fig, c: 'Shake it out', len: 0, r, b: bi + 1, nb: w.blocks.length, kind }); }
+      }
+    });
+    // plank finisher on every workout: 3 × 45 s, strength rest between
+    const PL = PLANK_FINISH;
+    seq.push({ p: 'break', n: 'Plank finisher', rk0: 'work', list: [PL, { n: `${PLANK_SETS} × ${PLANK_LEN}s`, c: 'Rest between planks is your strength rest' }], len: BLOCK_BREAK,
+      c: 'Last bit of work before the cool-down. Grab a mat.', pf: true });
+    for (let r = 1; r <= PLANK_SETS; r++) {
+      seq.push({ p: 'work', n: PL.n, fig: PL.n, c: r === PLANK_SETS ? 'Last one! ' + PL.c : PL.c, len: PLANK_LEN, r, nr: PLANK_SETS, kind: 'Plank finisher', where: `Plank finisher · Plank ${r} of ${PLANK_SETS}` });
+      if (r < PLANK_SETS) seq.push({ p: 'rest', rk: 'work', n: PL.n, fig: PL.n, c: 'Shake it out', len: 0, r, nr: PLANK_SETS, kind: 'Plank finisher', where: `Plank finisher · Plank ${r} of ${PLANK_SETS}` });
+    }
+    seq.push({ p: 'break', n: 'Cool-down', list: COOLDOWN.slice(0, 2), more: COOLDOWN.length - 2, len: BLOCK_BREAK,
+      c: 'Planks done! Have a drink, then slow stretches to finish.' });
+    COOLDOWN.forEach((x, i) => {
+      seq.push({ p: 'cool', n: x.n, fig: x.fig, c: x.c, len: x.len || COOL_LEN });
+      if (i < COOLDOWN.length - 1) seq.push({ p: 'rest', rk: 'cool', n: COOLDOWN[i + 1].n, fig: COOLDOWN[i + 1].fig, c: 'Ease into the next stretch', len: 0 });
+    });
+    applyRest(seq);
+    return seq;
+  }
+  function applyRest(list) { (list || []).forEach(x => { if (x.rk) x.len = restLen(x.rk); }); }
+  const total = key => build(key).slice(1).reduce((a, s) => a + s.len, 0);
+
+  // ---- home
+  function renderWeek() {
+    $('week').innerHTML = DAYS.map((d, i) => {
+      const k = PLAN[i] && keyFor(i), w = k && WORKOUTS[k];
+      const cls = ['day', !k && 'off', i === todayIdx && 'today', i === selected && k && 'sel'].filter(Boolean).join(' ');
+      return `<button type="button" class="${cls}" data-i="${i}" ${k ? '' : 'disabled'}>
+        <span class="dn">${i === todayIdx ? 'Today' : d}<span class="badges">${shots[i] && shots[i].done ? '<span class="sball" title="Shooting round done" aria-label="shooting round done"></span>' : ''}${lays[i] && lays[i].done ? '<span class="slay" title="Layups and board work done" aria-label="layups and board work done"></span>' : ''}${done[i] ? '<span class="tick" aria-label="done">✓</span>' : ''}</span></span>
+        ${w ? `<span class="wn">${w.name}</span><span class="wf">${Math.round(total(k) / 60)} min${rainy[i] ? ' · Indoors' : ''}</span>`
+            : `<span class="wn">Rest or team training</span>`}
+      </button>`;
+    }).join('');
+    $('doneCount').textContent = Object.keys(done).filter(i => PLAN[i]).length;
+    const P = totalPts(); $('ptsTotal').textContent = P.toLocaleString();
+    if (!$('restoreBox')) $('rtHome').innerHTML = restoreBanner() + rewardTrack(P);
+    else $('rtHome').lastElementChild.outerHTML = rewardTrack(P);
+    $('statsBody').innerHTML = statsHTML();
+  }
+
+  // rest pickers: ball handling 5/10 s, strength & focus 10/20 s (30 s breaks between blocks, 5 s in the cool-down)
+  function restPicker(only) {
+    const ball = `<span class="rest-grp"><span>Ball rest</span><span class="seg" role="group" aria-label="Ball handling rest">
+        <button type="button" data-brest="5" aria-pressed="${ballRest === 5}">5s</button><button type="button" data-brest="10" aria-pressed="${ballRest === 10}">10s</button></span></span>`;
+    const work = `<span class="rest-grp"><span>Strength &amp; focus rest</span><span class="seg" role="group" aria-label="Strength and focus rest">
+        <button type="button" data-wrest="10" aria-pressed="${workRest === 10}">10s</button><button type="button" data-wrest="20" aria-pressed="${workRest === 20}">20s easier</button></span></span>`;
+    return only === 'ball' ? ball : only === 'work' ? work : ball + work;
+  }
+  function setRest(el) {
+    if (el.dataset.brest) { ballRest = +el.dataset.brest; store.set('ballRest', ballRest); }
+    if (el.dataset.wrest) { workRest = +el.dataset.wrest; store.set('workRest', workRest); }
+    applyRest(seq);
+  }
+  function parentPanel(unlocked, byParent) {
+    if (!pu.open) return `<div class="pu-row"><button type="button" class="pu-link" data-pu="open">${unlocked ? 'Parent settings' : 'Parent unlock'}</button></div>`;
+    const msg = pu.msg ? `<p class="pu-msg${pu.ok ? ' ok' : ''}" role="status">${pu.msg}</p>` : '';
+    if (pu.change) return `<form class="pu" data-form="change">
+        <h3>Change parent code</h3>
+        <div class="pu-fields">
+          <label>Current code<input id="puCode" type="password" inputmode="numeric" autocomplete="off" maxlength="8"></label>
+          <label>New code (4 to 8 digits)<input id="puNew" type="password" inputmode="numeric" autocomplete="off" maxlength="8"></label>
+        </div>
+        ${msg}
+        <div class="pu-btns"><button type="submit" class="start small">Save code</button><button type="button" class="ghost" data-pu="close">Cancel</button></div>
+      </form>`;
+    return `<form class="pu" data-form="unlock">
+        <h3>${unlocked ? 'Parent settings' : 'Parent unlock'}</h3>
+        <p>${unlocked ? (byParent ? 'The bonus rounds for this day are unlocked by a parent.' : 'The bonus rounds for this day are already unlocked.') : 'Enter the parent code to unlock the shooting round and layups for this day.'}</p>
+        ${unlocked ? '' : `<div class="pu-fields"><label>Parent code<input id="puCode" type="password" inputmode="numeric" autocomplete="off" maxlength="8"></label></div>`}
+        ${msg}
+        <div class="pu-btns">${unlocked ? (byParent ? '<button type="button" class="start small" data-pu="relock">Lock again</button>' : '') : '<button type="submit" class="start small">Unlock</button>'}
+          <button type="button" class="ghost" data-pu="change">Change code</button><button type="button" class="ghost" data-pu="close">Close</button></div>
+      </form>
+      <form class="pu" data-form="extra">
+        <h3>Approve an extra scored run</h3>
+        <p>Points count once a day. If he wants to go again for points, enter the code and choose which run will score next.${['workout', 'shoot', 'lay'].some(k => extraOK[k]) ? ' Approved now: ' + ['workout', 'shoot', 'lay'].filter(k => extraOK[k]).map(k => k === 'workout' ? 'next workout' : 'next ' + RD[k].title.toLowerCase()).join(', ') + '.' : ''}</p>
+        <div class="pu-fields"><label>Parent code<input id="puCodeX" type="password" inputmode="numeric" autocomplete="off" maxlength="8"></label></div>
+        ${pu.xmsg ? `<p class="pu-msg${pu.xok ? ' ok' : ''}" role="status">${pu.xmsg}</p>` : ''}
+        <div class="pu-btns"><button type="submit" class="start small" name="what" value="workout">Workout</button><button type="submit" class="start small" name="what" value="shoot">Shooting round</button><button type="submit" class="start small" name="what" value="lay">Layups</button></div>
+      </form>
+      <form class="pu" data-form="adjust">
+        <h3>Add points</h3>
+        <p>Give back points that were lost, or add a bonus. Use a minus number to take points away.</p>
+        <div class="pu-fields">
+          <label>Points<input id="puPts" type="number" inputmode="numeric" step="1" min="-1000" max="1000"></label>
+          <label>Reason (optional)<input id="puWhy" type="text" maxlength="60" class="txt" placeholder="Points lost this week"></label>
+          <label>Parent code<input id="puCodeA" type="password" inputmode="numeric" autocomplete="off" maxlength="8"></label>
+        </div>
+        ${pu.amsg ? `<p class="pu-msg${pu.aok ? ' ok' : ''}" role="status">${pu.amsg}</p>` : ''}
+        <div class="pu-btns"><button type="submit" class="start small">Add points</button></div>
+      </form>
+      <div class="pu">
+        <h3>Backup &amp; restore</h3>
+        <p>His save code is copied to the clipboard each time he taps Finish. To keep a backup, copy it here and paste it into Notes. To restore, paste a save code into the second box.</p>
+        <textarea id="puSave" rows="2" readonly aria-label="Current save code">Making save code…</textarea>
+        <div class="pu-btns"><button type="button" class="start small" data-pu="copy">Copy save code</button></div>
+        <textarea id="puRestore" rows="2" placeholder="Paste a save code to restore" aria-label="Save code to restore"></textarea>
+        <p class="pu-msg" id="puRestoreMsg"></p>
+        <div class="pu-btns"><button type="button" class="start small" data-pu="restore">Restore</button></div>
+      </div>`;
+  }
+  function renderDetail() {
+    const k = keyFor(selected), w = WORKOUTS[k];
+    const kit = KIT[k], kc = kitChecks[selected + ':' + k] || [];
+    const unlocked = isUnlocked(selected), byParent = !done[selected] && !!parentUnlock[selected];
+    const roundCard = m => {
+      const Rm = RD[m], sh = Rm.data()[selected], log = logs[m], shTime = sh ? clock(sh.elapsed) : '';
+      const recent = log.slice(-10), bestT = log.length ? Math.min(...log.map(r => r.t)) : 0, maxT = recent.length ? Math.max(...recent.map(r => r.t)) : 0;
+      const hist = log.length ? `<div class="hist"><div class="hist-h"><span>Best <b>${clock(bestT)}</b></span><span>Last <b>${clock(log[log.length - 1].t)}</b></span><span>${log.length} round${log.length > 1 ? 's' : ''}</span></div>
+        <div class="bars" aria-label="Recent round times, shorter bars are faster">${recent.map(r => `<i class="${r.t === bestT ? 'best' : ''}" style="height:${Math.max(12, r.t / maxT * 100)}%" title="${r.d}: ${clock(r.t)}"></i>`).join('')}</div>
+        <small>Recent rounds · shorter bar = faster</small></div>` : '';
+      return `<div class="shoot-cta${unlocked ? '' : ' locked'}">
+        <div class="shoot-ico" aria-hidden="true">${courtSVG(sh, true, m)}</div>
+        <div style="min-width:0">
+          <h3>${Rm.title} <span>Optional extra</span></h3>
+          <p>${Rm.blurb}</p>
+          ${hist}
+          <p class="prog">${!unlocked ? 'Finish today\'s session to unlock.' : byParent && !(sh && sh.started) ? 'Unlocked by a parent.' : sh && sh.done ? `Done ✓ · ${Rm.total} in ${shTime}` : sh && sh.started ? `${Rm.unit} ${sh.spot + 1} of ${Rm.st.length} · ${shTime} so far` : 'Unlocked. Ready when you are.'}</p>
+        </div>
+        <button class="start alt" data-open="${m}" type="button" ${unlocked ? '' : 'disabled'}>${!unlocked ? 'Locked' : sh && sh.done ? Rm.btn[2] : sh && sh.started ? Rm.btn[1] : Rm.btn[0]}</button>
+      </div>`;
+    };
+    const blocks = w.blocks.map((blk, i) => `<div class="part ${blk.k === 'ball' ? 'ballp' : blk.k === 'core' ? 'corep' : 'tab'}"><h3>${i + 1} · ${blk.label || (blk.k === 'ball' ? (blk.fin ? 'Ball finisher' : 'Ball handling') : blk.k === 'core' ? 'Core strength' : 'Focus')} <span>8 × ${WORK}s on / ${restLen(blk.k === 'ball' ? 'ball' : 'work')}s off</span></h3>
+      <ul>${blk.p.map((e, j) => `<li>${mini(e.fig || e.n)}<i>${j ? 'Even' : 'Odd'}</i>${e.n}${e.hand ? ' <em class="hand">R then L</em>' : ''}</li>`).join('')}</ul></div>`).join('');
+    $('detail').innerHTML = `
+      <div class="card-head">
+        <div style="min-width:0">
+          <p class="eyebrow">${selected === todayIdx ? "Today's session" : DAYS[selected]}${done[selected] ? ' · Done ✓' : ''}</p>
+          <h2>${w.name}</h2>
+          <p class="focus">${w.about}</p>
+        </div>
+        <div class="meta">
+          <div><b>${fmt(total(k))}</b><small>Session time</small></div>
+          <div><b>${w.blocks.length}</b><small>Tabata blocks</small></div>
+        </div>
+      </div>
+      <div class="mode-row">
+        <span class="seg mode" role="group" aria-label="Where are you training?">
+          <button type="button" data-mode="out" aria-pressed="${!rainy[selected]}">${PLAN[selected] === 'sun' ? 'Normal' : 'Outside'}</button>
+          <button type="button" data-mode="rain" aria-pressed="${!!rainy[selected]}">Rainy day · indoors</button>
+        </span>
+        ${rainy[selected] ? '<span class="mode-note">Ball held only. No bouncing, no throwing.</span>' : ''}
+      </div>
+      <div class="kit">
+        <h3>What you need</h3>
+        <ul class="kit-list">${kit.map(t => `<li>${t}</li>`).join('')}</ul>
+      </div>
+      <div class="parts">
+        <div class="part warm"><h3>Warm-up <span>${fmt(WARMUP.reduce((a, x) => a + (x.len || WARM_LEN), 0))} · no rest</span></h3><ul>${WARMUP.map(x => `<li>${mini(x.fig || x.n)}${x.n}</li>`).join('')}</ul></div>
+        ${blocks}
+        <div class="part corep"><h3>Plank finisher <span>${PLANK_SETS} × ${PLANK_LEN}s / ${restLen('work')}s off</span></h3><ul><li>${mini('Plank')}Plank</li></ul></div>
+        <div class="part cool"><h3>Cool-down <span>${fmt(COOLDOWN.reduce((a, x) => a + (x.len || COOL_LEN), 0))} · ${COOL_REST}s between</span></h3><ul>${COOLDOWN.map(x => `<li>${mini(x.fig || x.n)}${x.n}</li>`).join('')}</ul></div>
+      </div>
+      <div class="go-row">
+        <div class="opts">
+          ${restPicker()}
+          ${scoredOn(today(), 'workout') ? `<span class="banked">Today's workout points are banked. Another run today is practice${extraOK.workout ? ', except the next one: a parent approved it to score' : ' unless a parent approves it'}.</span>` : ''}
+          <label class="chk"><input id="voice" type="checkbox" ${voice ? 'checked' : ''}> Say exercise names</label>
+        </div>
+        <button class="start" id="startBtn" type="button">Start session</button>
+      </div>
+      ${keyFor(selected).toLowerCase().includes('rain') ? '' : roundCard('shoot') + roundCard('lay')}${parentPanel(unlocked, byParent)}`;
+    Fig.hydrate($('detail'));
+    if ($('puSave')) makeCode().then(c => { const b = $('puSave'); if (b) b.value = c; });
+  }
+
+  $('week').addEventListener('click', e => {
+    const b = e.target.closest('.day'); if (!b || b.disabled) return;
+    selected = +b.dataset.i; renderWeek(); renderDetail();
+  });
+  $('detail').addEventListener('click', e => {
+    const r = e.target.closest('[data-brest], [data-wrest]');
+    if (r) { setRest(r); renderWeek(); renderDetail(); return; }
+    const m = e.target.closest('[data-mode]');
+    if (m) { rainy[selected] = m.dataset.mode === 'rain'; store.set('rain-' + weekKey, rainy); renderWeek(); renderDetail(); return; }
+    const c = e.target.closest('[data-kit]');
+    if (c) {
+      const id = selected + ':' + keyFor(selected), arr = kitChecks[id] || [];
+      arr[+c.dataset.kit] = !arr[+c.dataset.kit]; kitChecks[id] = arr; store.set('kit-' + weekKey, kitChecks);
+      renderDetail(); return;
+    }
+    const ob = e.target.closest('[data-open]'); if (ob && !ob.disabled) return openRound(ob.dataset.open, selected);
+    const pb = e.target.closest('[data-pu]');
+    if (pb) {
+      const a = pb.dataset.pu;
+      if (a === 'open') pu = { open: true, change: false, msg: '' };
+      else if (a === 'close') pu = { open: false, change: false, msg: '' };
+      else if (a === 'change') pu = { open: true, change: true, msg: '' };
+      else if (a === 'copy') {
+        const box = $('puSave'), code = box ? box.value : '';
+        if (code.startsWith(CODE_PREFIX)) navigator.clipboard.writeText(code).then(() => toast('Save code copied. Paste it into Notes to keep it safe.'), () => { box.focus(); box.select(); toast('Select the code and copy it.'); });
+        return;
+      }
+      else if (a === 'restore') { restoreFrom(($('puRestore') || {}).value, $('puRestoreMsg')); return; }
+      else if (a === 'relock') { delete parentUnlock[selected]; store.set('pu-' + weekKey, parentUnlock); pu = { open: false, change: false, msg: '' }; }
+      renderWeek(); renderDetail();
+      const f = $('puCode'); if (f) f.focus();
+      return;
+    }
+    if (e.target.id === 'startBtn') startSession();
+  });
+  $('rtHome').addEventListener('click', e => {
+    const b = e.target.closest('[data-restore]'); if (!b) return;
+    if (b.dataset.restore === 'no') { store.set('restoreDismissed', Date.now()); renderWeek(); return; }
+    restoreFrom($('restoreBox').value, $('restoreMsg'));
+  });
+  $('rtHome').addEventListener('paste', e => {
+    if (e.target.id !== 'restoreBox') return;
+    const t = (e.clipboardData || window.clipboardData).getData('text');
+    if (t && t.includes(CODE_PREFIX)) { e.preventDefault(); e.target.value = t; restoreFrom(t, $('restoreMsg')); }
+  });
+  $('detail').addEventListener('submit', e => {
+    const f = e.target.closest('form[data-form]'); if (!f) return;
+    e.preventDefault();
+    const code = (f.querySelector('input[type=password]') || {}).value || '';
+    if (f.dataset.form === 'adjust') {
+      if (hashCode(code.trim()) !== parentHash) { pu.amsg = 'That code isn\'t right. Try again.'; pu.aok = false; renderDetail(); return; }
+      const n = Math.round(+(($('puPts') || {}).value || 0));
+      if (!n || Math.abs(n) > 1000) { pu.amsg = 'Enter a number of points between -1000 and 1000.'; pu.aok = false; renderDetail(); return; }
+      const why = ((($('puWhy') || {}).value) || '').trim() || (n > 0 ? 'Points added by a parent' : 'Points removed by a parent');
+      ledger.push({ d: today(), k: 'adjust', pts: n, why }); saveLedger();
+      pu.amsg = `${n > 0 ? 'Added' : 'Removed'} ${Math.abs(n)} points. Total is now ${totalPts().toLocaleString()}.`; pu.aok = true;
+      renderWeek(); renderDetail(); return;
+    }
+    if (f.dataset.form === 'extra') {
+      if (hashCode(code.trim()) !== parentHash) { pu.xmsg = 'That code isn\'t right. Try again.'; pu.xok = false; renderDetail(); return; }
+      const what = (e.submitter && e.submitter.value) || 'workout';
+      extraOK[what] = true; store.set('extraOK', extraOK);
+      pu.xmsg = `Approved: the next ${what === 'workout' ? 'workout' : RD[what].title.toLowerCase()} will score points.`; pu.xok = true;
+      renderWeek(); renderDetail(); return;
+    }
+    if (hashCode(code.trim()) !== parentHash) { pu.msg = 'That code isn\'t right. Try again.'; pu.ok = false; renderDetail(); const i = $('puCode'); if (i) i.focus(); return; }
+    if (f.dataset.form === 'unlock') {
+      parentUnlock[selected] = true; store.set('pu-' + weekKey, parentUnlock);
+      pu = { open: false, change: false, msg: '' };
+    } else {
+      const nw = (($('puNew') || {}).value || '').trim();
+      if (!/^\d{4,8}$/.test(nw)) { pu.msg = 'The new code needs to be 4 to 8 digits.'; pu.ok = false; renderDetail(); return; }
+      parentHash = hashCode(nw); store.set('pcode', parentHash);
+      pu = { open: true, change: false, msg: 'Code changed.', ok: true };
+    }
+    renderWeek(); renderDetail();
+  });
+  $('detail').addEventListener('change', e => { if (e.target.id === 'voice') { voice = e.target.checked; store.set('voice', voice); } });
+
+  // ---- bonus rounds (unlocked after the day's workout). Each station: do the count, counted in his head; a stopwatch times the whole round.
+  // Court diagram: baseline at the top, ring at (150, 31), key from x 112 to 188, free-throw line at y 128.
+  // He faces the ring, so his right is the right of the picture.
+  const GROUP = 5;
+  const SPOTS = [
+    { n: 'Left block', c: 'Just outside the key next to the ring. Use the backboard: aim for the top corner of the square.', x: 84, y: 50, count: 20, verb: 'Make', what: '', word: 'made' },
+    { n: 'Left elbow', c: 'Where the free-throw line meets the key. Square your feet to the ring before every shot.', x: 104, y: 132, count: 20, verb: 'Make', what: '', word: 'made' },
+    { n: 'Free-throw line', c: 'Same routine every time: breathe, bend your knees, shoot, hold your follow-through.', x: 150, y: 146, count: 20, verb: 'Make', what: '', word: 'made' },
+    { n: 'Right elbow', c: 'Elbow under the ball, finish with your wrist like reaching into a cookie jar.', x: 196, y: 132, count: 20, verb: 'Make', what: '', word: 'made' },
+    { n: 'Right block', c: 'Use the backboard: aim for the top corner of the square. Soft touch.', x: 216, y: 50, count: 20, verb: 'Make', what: '', word: 'made' },
+  ];
+  const LAYS = [
+    { n: 'Right-hand layups', path: 'drive', x: 196, y: 138, count: 10, verb: 'Do', what: 'layups', word: 'done',
+      c: 'Start at the right corner of the key. Drive in, last step on your left foot, right knee up, lay it off the backboard with your right hand.' },
+    { n: 'Left-hand layups', path: 'drive', x: 104, y: 138, count: 10, verb: 'Do', what: 'layups', word: 'done',
+      c: 'Left corner of the key. Drive in, last step on your right foot, left knee up, lay it off the backboard with your left hand.' },
+    { n: 'Euro step — right side', path: 'euro', x: 196, y: 138, count: 10, verb: 'Do', what: 'euro step layups', word: 'done',
+      c: 'Right corner. Drive at the ring, big step one way, then step the other way around the defender, finish with your right hand.' },
+    { n: 'Euro step — left side', path: 'euro', x: 104, y: 138, count: 10, verb: 'Do', what: 'euro step layups', word: 'done',
+      c: 'Left corner. Drive, big step one way, then the other, finish with your left hand.' },
+    { n: 'Finger rolls — left side', path: 'under', x: 136, y: 50, count: 10, verb: 'Do', what: 'finger rolls', word: 'done',
+      c: 'Stand under the ring on the left. Small hop, roll the ball off your fingertips softly onto the backboard. Left hand.' },
+    { n: 'Finger rolls — right side', path: 'under', x: 164, y: 50, count: 10, verb: 'Do', what: 'finger rolls', word: 'done',
+      c: 'Now under the ring on the right. Soft finger roll off the backboard with your right hand.' },
+  ];
+  // ---------- save codes: his iPad can wipe the app's saved data, so progress travels in a code too.
+  // Tapping Finish copies the latest code to the clipboard; if the app opens empty, he pastes it back.
+  const CODE_PREFIX = 'HOOPS1:';
+  function allData() {
+    const out = {};
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); out[k] = localStorage.getItem(k); } } catch (e) {}
+    return out;
+  }
+  const b64 = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); };
+  const unb64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+  async function pipe(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+  async function makeCode() {
+    const json = new TextEncoder().encode(JSON.stringify({ v: 1, at: Date.now(), data: allData() }));
+    try { return CODE_PREFIX + 'z' + b64(await pipe(json, new CompressionStream('deflate-raw'))); }
+    catch (e) { return CODE_PREFIX + 'j' + b64(json); }
+  }
+  async function readCode(code) {
+    code = String(code || '').replace(/\s+/g, '');
+    const i = code.indexOf(CODE_PREFIX); if (i < 0) throw new Error('nocode');
+    const body = code.slice(i + CODE_PREFIX.length), kind = body[0], raw = unb64(body.slice(1));
+    const bytes = kind === 'z' ? await pipe(raw, new DecompressionStream('deflate-raw')) : raw;
+    const obj = JSON.parse(new TextDecoder().decode(bytes));
+    if (!obj || !obj.data) throw new Error('bad');
+    return obj;
+  }
+  // merge a save code into this iPad's data without losing anything on either side
+  function mergeIn(data) {
+    const cur = allData(), J = v => { try { return JSON.parse(v); } catch (e) { return v; } };
+    for (const [k, v] of Object.entries(data)) {
+      const a = J(cur[k]), b = J(v);
+      let out;
+      if (cur[k] == null) out = b;
+      else if (Array.isArray(a) && Array.isArray(b)) { const seen = new Set(), res = []; for (const x of a.concat(b)) { const s = JSON.stringify(x); if (!seen.has(s)) { seen.add(s); res.push(x); } } out = res; }
+      else if (a && b && typeof a === 'object' && typeof b === 'object') out = Object.assign({}, b, a);
+      else if (k === 'rewardsSeen') out = Math.max(+a || 0, +b || 0);
+      else out = a;
+      try { localStorage.setItem(k, JSON.stringify(out)); } catch (e) {}
+    }
+  }
+  async function copyCode(silent) {
+    const code = await makeCode();
+    try { store.set('lastCodeAt', Date.now()); } catch (e) {}
+    try { await navigator.clipboard.writeText(code); if (!silent) toast('Save code copied. Paste it into Notes to keep it safe.'); else toast('Progress saved. Your save code is copied, just in case.'); return true; }
+    catch (e) { return code; }
+  }
+  // copy must happen inside the tap itself, so start building the code early and write it on Finish
+  let codeReady = null;
+  const prepCode = () => { codeReady = makeCode(); };
+  function copyOnTap() {
+    if (!codeReady) prepCode();
+    const p = codeReady; codeReady = null;
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        navigator.clipboard.write([new ClipboardItem({ 'text/plain': p.then(c => new Blob([c], { type: 'text/plain' })) })])
+          .then(() => toast('Progress saved. Your save code is copied, just in case.')).catch(() => {});
+      } else p.then(c => navigator.clipboard.writeText(c)).then(() => toast('Progress saved. Your save code is copied, just in case.')).catch(() => {});
+    } catch (e) {}
+  }
+  function toast(msg) {
+    let t = document.getElementById('toast');
+    if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+    t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3800);
+  }
+  async function restoreFrom(text, msgEl) {
+    try {
+      const obj = await readCode(text);
+      mergeIn(obj.data);
+      if (msgEl) { msgEl.textContent = 'Progress restored! Reloading…'; msgEl.className = 'pu-msg ok'; }
+      setTimeout(() => location.reload(), 700);
+    } catch (e) {
+      if (msgEl) { msgEl.textContent = 'That doesn\'t look like a save code. Copy the whole code and try again.'; msgEl.className = 'pu-msg'; }
+    }
+  }
+  // the app opened with no progress at all: offer to paste the save code
+  const looksWiped = () => !ledger.length && !sessions.length;
+  function restoreBanner() {
+    if (!looksWiped() || store.get('restoreDismissed', 0) > Date.now() - 6 * 3600e3) return '';
+    return `<div class="restore">
+      <div><b>Lost your progress?</b><span>If your points and ticks have gone, paste your save code here. It was copied when you last tapped Finish, so press and hold in the box, then tap Paste.</span></div>
+      <textarea id="restoreBox" rows="2" placeholder="Paste your save code" aria-label="Save code"></textarea>
+      <p class="pu-msg" id="restoreMsg"></p>
+      <div class="pu-btns"><button type="button" class="start small" data-restore="go">Restore</button><button type="button" class="ghost" data-restore="no">Not now</button></div>
+    </div>`;
+  }
+
+  // parent unlock: a code lets a parent open the bonus rounds for a day without the workout being done
+  const hashCode = c => { let h = 5381; for (const ch of 'hoops23:' + c) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0; return h.toString(36); };
+  const DEFAULT_CODE_HASH = hashCode('3883');
+  let parentHash = store.get('pcode', DEFAULT_CODE_HASH);
+  let parentUnlock = store.get('pu-' + weekKey, {});
+  let pu = { open: false, change: false, msg: '' };
+  const isUnlocked = d => !!(done[d] || parentUnlock[d]);
+  let lays = store.get('lay-' + weekKey, {});
+  for (const d in lays) if (!lays[d] || typeof lays[d].elapsed !== 'number') delete lays[d];
+  const logs = { shoot: shootLog, lay: store.get('layLog', []) };
+  const RD = {
+    shoot: { title: 'Shooting round', unit: 'Cone', st: SPOTS, data: () => shots, save: () => store.set('shoot-' + weekKey, shots), logKey: 'shootLog',
+      done: 'Great shooting!', total: '100 makes', badge: 'sball', badgeLabel: 'Shooting round done',
+      blurb: '5 cones around the key. Make 20 at each cone, counting in your head, then move to the next. A clock times the whole round. Outside on the ring, so skip it if the grass is wet.',
+      btn: ['Start shooting', 'Keep shooting', 'Shoot again'] },
+    lay: { title: 'Layups & board work', unit: 'Station', st: LAYS, data: () => lays, save: () => store.set('lay-' + weekKey, lays), logKey: 'layLog',
+      done: 'Great finishing!', total: '60 finishes', badge: 'slay', badgeLabel: 'Layups and board work done',
+      blurb: '10 layups from each corner of the key, then 10 euro steps from each side, then finger rolls under the ring, left then right. Count them in your head. A clock times the whole round. Outside on the ring.',
+      btn: ['Start layups', 'Keep going', 'Go again'] },
+  };
+  let mode = 'shoot';
+  const D = () => RD[mode];
+  const newShots = () => ({ spot: 0, done: false, splits: [], elapsed: 0, started: false });
+
+  function courtSVG(sh, small, m) {
+    const R = RD[m || mode], st = R.st;
+    const state = i => sh ? (sh.done || i < sh.spot ? 'done' : i === sh.spot ? 'now' : '') : '';
+    let marks = '';
+    if ((m || mode) === 'shoot') {
+      marks = st.map((p, i) => { const s = state(i);
+        return `<g class="cone ${s}" transform="translate(${p.x} ${p.y})">${s === 'now' ? '<circle class="halo" r="17"></circle>' : ''}
+          <path d="M-8 7 L0 -9 L8 7 Z"></path>${small ? '' : `<text y="27">${i + 1}</text>`}</g>`; }).join('');
+    } else {
+      // show the current station's route (or every route on the small card picture)
+      const route = p => p.path === 'drive' ? `M${p.x} ${p.y} Q${(p.x + 150) / 2 + (p.x > 150 ? 10 : -10)} ${(p.y + 31) / 2 + 12} 150 44`
+        : p.path === 'euro' ? `M${p.x} ${p.y} L${p.x + (p.x > 150 ? -16 : 16)} ${p.y - 34} L${p.x + (p.x > 150 ? 8 : -8)} ${p.y - 62} L150 44` : '';
+      const cur = sh && !sh.done ? sh.spot : -1;
+      const show = small ? [0, 1, 2, 3, 4, 5] : [cur].filter(i => i >= 0);
+      marks += show.filter(i => st[i].path !== 'under').map(i => `<path class="route ${i === cur ? 'now' : ''}${st[i].path === 'euro' ? ' euro' : ''}" d="${route(st[i])}"></path>`).join('');
+      const seen = {};
+      marks += st.map((p, i) => {
+        const key = p.x + ',' + p.y; if (seen[key] != null && i !== cur) return ''; seen[key] = i;
+        const s = state(i), isNow = i === cur;
+        const shape = p.path === 'under' ? '<circle r="6"></circle>' : '<path d="M-8 7 L0 -9 L8 7 Z"></path>';
+        return `<g class="cone ${isNow ? 'now' : s}" transform="translate(${p.x} ${p.y})">${isNow ? '<circle class="halo" r="17"></circle>' : ''}${shape}</g>`;
+      }).join('');
+    }
+    return `<svg viewBox="0 0 300 ${small ? 180 : 200}" class="court" role="img" aria-label="Basketball key showing the stations for the ${R.title.toLowerCase()}">
+      <rect class="cl" x="6" y="6" width="288" height="${small ? 168 : 188}" rx="10"></rect>
+      <line class="cl" x1="6" y1="10" x2="294" y2="10"></line>
+      <rect class="key" x="112" y="10" width="76" height="118"></rect>
+      <path class="cl" d="M120 128 A30 30 0 0 0 180 128"></path>
+      <line class="board" x1="130" y1="22" x2="170" y2="22"></line>
+      <circle class="ring" cx="150" cy="31" r="8"></circle>
+      ${marks}</svg>`;
+  }
+  const clock = t => { t = Math.max(0, Math.floor(t)); const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, sec = String(t % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`; };
+  let shootDay = 0, sRunning = false, sFrom = 0, sIv = null, sCounting = false, sCountEnd = 0, sLastCount = null;
+  const cur = () => D().data()[shootDay];
+  const saveShots = () => D().save();
+  const shElapsed = sh => sh.elapsed + (sRunning ? (performance.now() - sFrom) / 1000 : 0);
+  function openRound(m, day) {
+    mode = m; shootDay = day;
+    const data = D().data();
+    if (!data[day] || data[day].done) data[day] = newShots();
+    saveShots();
+    $('sTitle').textContent = D().title;
+    $('timer').hidden = true; $('shoot').hidden = false; document.body.style.overflow = 'hidden';
+    keepAwake(); renderShoot();
+  }
+  const openShoot = day => openRound('shoot', day);
+  function sStop() {
+    const sh = cur();
+    if (sh && sRunning) { sh.elapsed = shElapsed(sh); sRunning = false; }
+    sRunning = false; sCounting = false; clearInterval(sIv); saveShots();
+  }
+  function closeShoot() {
+    sStop();
+    $('shoot').hidden = true; document.body.style.overflow = '';
+    try { wake && wake.release(); } catch (e) {} wake = null;
+    renderWeek(); renderDetail();
+  }
+  function sCountIn() {
+    sCounting = true; sLastCount = null; sCountEnd = performance.now() + COUNT_IN * 1000;
+    const sh = cur(), p = D().st[sh.spot];
+    say(sh.started ? 'Get ready' : `${D().unit} 1, ${p.n}. ${p.verb} ${p.count}.`);
+    clearInterval(sIv); sIv = setInterval(sTick, 200); renderShoot();
+  }
+  function sTick() {
+    if (sCounting) {
+      const r = (sCountEnd - performance.now()) / 1000, w = Math.ceil(r);
+      if (r <= 0) { sCounting = false; sRunning = true; sFrom = performance.now(); cur().started = true; beep(1046, .3, .3); }
+      else if (w !== sLastCount) { sLastCount = w; beep(660, .1); }
+    }
+    renderShoot();
+  }
+  function coneDone() {
+    const sh = cur(), t = shElapsed(sh), st = D().st;
+    sh.splits[sh.spot] = t - sh.splits.slice(0, sh.spot).reduce((a, x) => a + x, 0);
+    if (sh.spot < st.length - 1) {
+      sh.spot++; beep(1318, .3, .25);
+      const p = st[sh.spot];
+      say(`${D().unit} done. Next, ${p.n}. ${p.verb} ${p.count}.`);
+    } else {
+      sStop(); sh.done = true; beep(1046, .5, .3);
+      const log = logs[mode], prev = log.length ? Math.min(...log.map(r => r.t)) : null;
+      const before = totalPts(); sh.res = scoreRound(mode, t, prev != null && t < prev); sh.panel = pointsPanel(sh.res, before);
+      prepCode();
+      log.push({ d: ymd(new Date()), t: Math.floor(t), s: sh.splits.map(Math.floor) });
+      if (log.length > 60) log.splice(0, log.length - 60);
+      store.set(D().logKey, log);
+      sh.logged = log.length - 1;
+      say(prev != null && t < prev ? 'New personal best! Great work!' : `${D().title} done in ${Math.floor(t / 60)} minutes. Great work!`);
+    }
+    saveShots(); renderShoot();
+  }
+  function coneBack() {
+    const sh = cur();
+    if (sh.done) { sh.done = false; sh.spot = D().st.length - 1; }
+    else if (sh.spot > 0) sh.spot--;
+    sh.splits.length = sh.spot;
+    saveShots(); renderShoot();
+  }
+  function renderShoot() {
+    const R = D(), st = R.st, sh = cur(), t = shElapsed(sh), n = st.length, log = logs[mode];
+    $('shoot').classList.toggle('finished', !!sh.done);
+    $('sCourt').innerHTML = courtSVG(sh, false);
+    $('sBar').style.width = (sh.done ? 100 : sh.spot / n * 100) + '%';
+    $('sWatch').textContent = sCounting ? Math.max(1, Math.ceil((sCountEnd - performance.now()) / 1000)) : clock(t);
+    $('sWatch').classList.toggle('counting', sCounting);
+    $('sBack').disabled = sh.spot === 0 && !sh.done;
+    if (sh.done) {
+      $('sNo').textContent = `All ${n} ${R.unit.toLowerCase()}s done`; $('sSpot').textContent = R.done;
+      $('sTask').textContent = `${R.total} in ${clock(t)}`;
+      $('sGroups').style.gridTemplateColumns = ''; $('sGroups').style.maxWidth = '';
+      const before = log.slice(0, sh.logged ?? log.length);
+      const bestBefore = before.length ? Math.min(...before.map(r => r.t)) : null, last = before.length ? before[before.length - 1].t : null;
+      const bestSplit = i => { const v = before.map(r => r.s[i]).filter(x => x > 0); return v.length ? Math.min(...v) : null; };
+      $('sGroups').innerHTML = `<table class="sum"><thead><tr><th>${R.unit}</th><th>Today</th><th>Best before</th></tr></thead><tbody>${st.map((p, i) => {
+        const b = bestSplit(i), now = sh.splits[i] || 0;
+        return `<tr><td>${i + 1} · ${p.n}</td><td class="${b != null && now < b ? 'pb' : ''}">${clock(now)}</td><td>${b != null ? clock(b) : '–'}</td></tr>`; }).join('')}</tbody></table>`;
+      const slow = sh.splits.indexOf(Math.max(...sh.splits));
+      $('sCue').textContent = `Slowest today: ${st[slow].n}. Start there next time.`;
+      $('sStats').innerHTML = bestBefore == null ? 'First round recorded. Next time, try to beat this time.'
+        : t < bestBefore ? `<b class="pb">New personal best!</b> ${clock(bestBefore - t)} faster than your old best (${clock(bestBefore)}).`
+        : `Best ${clock(bestBefore)} · ${t < last ? `${clock(last - t)} faster` : `${clock(t - last)} slower`} than last time (${clock(last)}).`;
+      $('sNext').innerHTML = '';
+      if ($('sPts').dataset.v !== (sh.panel || '')) { $('sPts').innerHTML = sh.panel || ''; $('sPts').dataset.v = sh.panel || ''; }
+      $('sGo').textContent = 'Finish'; $('sPause').disabled = true;
+      return;
+    }
+    const p = st[sh.spot];
+    $('sPts').innerHTML = ''; $('sPts').dataset.v = '';
+    $('sNo').textContent = `${R.unit} ${sh.spot + 1} of ${n}`;
+    $('sSpot').textContent = p.n;
+    $('sTask').innerHTML = `${p.verb} <b>${p.count}</b>${p.what ? ' ' + p.what : ''}. Count them in your head, in groups of ${GROUP}.`;
+    $('sGroups').innerHTML = Array.from({ length: p.count / GROUP }, (_, g) => `<div class="grp"><small>Group ${g + 1}</small><span class="pips">${'<i></i>'.repeat(GROUP)}</span><small class="ga">${(g + 1) * GROUP} ${p.word}</small></div>`).join('');
+    $('sGroups').style.gridTemplateColumns = `repeat(${p.count / GROUP}, minmax(0, 1fr))`;
+    $('sGroups').style.maxWidth = p.count / GROUP * 130 + 'px';
+    $('sCue').textContent = p.c;
+    $('sStats').innerHTML = sh.splits.length ? sh.splits.map((x, i) => `${i + 1}: ${clock(x)}`).join(' · ') : '';
+    $('sNext').innerHTML = sCounting ? `Get ready: <b>${p.n}</b>` : sRunning ? `Tap <b>${R.unit} done</b> when you have ${p.word === 'made' ? 'made' : 'done'} ${p.count}`
+      : sh.started ? 'Paused' : `Get set for ${R.unit.toLowerCase()} 1. The clock starts after a 5 second count-in.`;
+    $('sGo').textContent = sCounting ? 'Get ready…' : sRunning ? (sh.spot < n - 1 ? `${R.unit} done` : 'Finish round') : sh.started ? 'Resume' : 'Start';
+    $('sGo').disabled = sCounting;
+    $('sPause').disabled = !sRunning && !sCounting;
+  }
+  $('sGo').addEventListener('click', () => {
+    const sh = cur();
+    if (sh.done) { copyOnTap(); return closeShoot(); }
+    if (sRunning) return coneDone();
+    if (!sCounting) sCountIn();
+  });
+  $('sPause').addEventListener('click', () => { sStop(); renderShoot(); });
+  $('sBack').addEventListener('click', coneBack);
+  $('sExit').addEventListener('click', closeShoot);
+  $('timer').addEventListener('click', e => { const rp = e.target.closest('[data-brest], [data-wrest]'); if (rp) { setRest(rp); renderTimer(); return; } });
+  $('timer').addEventListener('click', e => {
+    const b = e.target.closest('[data-round]');
+    if (b) { const d = sessionDay; exit(); openRound(b.dataset.round, d); }
+  });
+
+
+  // ---- sound & voice
+  let ctx;
+  function beep(f = 880, d = .12, v = .25) {
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'square'; o.frequency.value = f;
+      g.gain.setValueAtTime(v, ctx.currentTime); g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + d);
+      o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + d);
+    } catch (e) {}
+  }
+  function say(t) {
+    if (!voice) return;
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.rate = 1.05; speechSynthesis.speak(u); } catch (e) {}
+  }
+
+  // ---- timer
+  let seq = [], idx = 0, remaining = 0, endAt = 0, running = false, iv = null, lastBeep = null, wake = null, sessionDay = 0;
+  const COUNT_IN = 5;
+  let counting = false, countEnd = 0, lastCount = null;
+  const totalLen = () => seq.slice(1).reduce((a, s) => a + s.len, 0);
+
+  async function keepAwake() { try { wake = await navigator.wakeLock?.request('screen'); } catch (e) {} }
+  function stopClock() { trkHalt(); running = false; counting = false; clearInterval(iv); }
+
+  // 5-second count-in before the clock runs again (after a pause or a setup stop)
+  function countIn(intro) {
+    trkHalt(); clearInterval(iv); running = false; counting = true; lastCount = null;
+    countEnd = performance.now() + COUNT_IN * 1000;
+    if (intro) say(intro);
+    iv = setInterval(countTick, 100); renderTimer();
+  }
+  function countTick() {
+    const r = (countEnd - performance.now()) / 1000, w = Math.ceil(r);
+    if (r <= 0) { counting = false; beep(seq[idx].p === 'work' ? 1046 : 880, .3, .3); play(); return; }
+    if (w !== lastCount) { lastCount = w; beep(660, .1); }
+    renderTimer();
+  }
+
+  function startSession() {
+    sessionDay = selected; seq = build(keyFor(selected)); idx = 0; remaining = seq[0].len;
+    trkStart(selected, keyFor(selected)); lastPanel = ''; lastRes = null;
+    $('tName').textContent = WORKOUTS[keyFor(selected)].name;
+    $('timer').hidden = false; document.body.style.overflow = 'hidden';
+    beep(880, .05, .05); say('Get ready'); keepAwake(); play();
+  }
+  function play() { endAt = performance.now() + remaining * 1000; running = true; trkRun(); clearInterval(iv); iv = setInterval(tick, 100); renderTimer(); }
+  function tick() {
+    remaining = Math.max(0, (endAt - performance.now()) / 1000);
+    trkTick();
+    const w = Math.ceil(remaining);
+    if (w <= 3 && w > 0 && w !== lastBeep && seq[idx].p !== 'warm' && seq[idx].p !== 'cool' && seq[idx].rk !== 'cool') { lastBeep = w; beep(660, .1); }
+    if (remaining <= 0) { trkDone(seq[idx]); return go(idx + 1, true); }
+    renderTimer();
+  }
+  function go(i, auto) {
+    lastBeep = null;
+    if (i >= seq.length) return finish();
+    idx = Math.max(0, i); remaining = seq[idx].len;
+    const s = seq[idx];
+    if (s.hold) {
+      if (auto || running) {
+        beep(784, .4, .3);
+        say(s.b ? `Block ${s.b}. ${s.n}. ${s.list[0].n}, and ${s.list[1].n}. Tap go when you're ready.` : `${s.n}. Tap go when you're ready.`);
+      }
+      stopClock(); renderTimer(); return;
+    }
+    if (auto || running) {
+      beep(s.p === 'work' ? 1046 : 520, .3, .3);
+      if (s.p === 'work') say(s.n);
+      else if (s.p === 'rest') say(s.rk === 'cool' ? s.n : 'Rest. Next, ' + s.n);
+      else if (s.p === 'break') say(s.b ? `${s.c.split('.')[0]}. 30 seconds. Next, block ${s.b}, ${s.n}: ${s.list[0].n}, and ${s.list[1].n}.` : s.pf ? `Blocks done. 30 seconds, then the plank finisher: ${PLANK_SETS} planks of ${PLANK_LEN} seconds.` : 'Planks done. 30 seconds, then the cool-down.');
+      else say(s.n);
+    }
+    if (running) endAt = performance.now() + remaining * 1000;
+    renderTimer();
+  }
+  function finish() {
+    stopClock(); idx = seq.length; remaining = 0;
+    done[sessionDay] = true; store.set(weekKey, done);
+    const before = totalPts();
+    lastRes = scoreWorkout(true); lastPanel = lastRes ? pointsPanel(lastRes, before) : '';
+    prepCode();
+    beep(1046, .5, .3);
+    say(lastRes && lastRes.pts ? `Session done. ${lastRes.pts} points. Great work!` : 'Session done. Great work!');
+    renderTimer(); renderWeek(); renderDetail();
+  }
+  let lastPanel = '', lastRes = null;
+  function exit() {
+    if (trk) { trkHalt(); if (trk.active > 60) scoreWorkout(false); trk = null; }
+    if (window.Player3D) Player3D.hide(); figName = null; $('tFig').innerHTML = '';
+    stopClock(); try { speechSynthesis.cancel(); } catch (e) {}
+    try { wake && wake.release(); } catch (e) {} wake = null;
+    $('timer').hidden = true; document.body.style.overflow = '';
+  }
+
+  let listFor = null, pickFor = null;
+  const LABEL = { ready: 'Get ready', warm: 'Warm-up', work: 'Work', rest: 'Rest', break: 'Break', cool: 'Cool-down' };
+  function renderTimer() {
+    const t = $('timer');
+    if (idx >= seq.length) {
+      t.dataset.p = 'done'; setFig(null); $('tSecs').hidden = false; $('tList').hidden = true;
+      $('tPhase').textContent = 'Session done'; $('tEx').textContent = 'Great work!';
+      if (t.dataset.shown !== 'done') { t.dataset.shown = 'done'; if (lastRes && lastRes.pts) countUp($('tSecs'), lastRes.pts, '+'); else $('tSecs').textContent = lastRes && lastRes.note !== 'scored' && lastRes.note !== 'extra' ? '✓' : '+0'; }
+      $('tPts').hidden = !lastPanel; if ($('tPts').dataset.v !== lastPanel) { $('tPts').innerHTML = lastPanel; $('tPts').dataset.v = lastPanel; }
+      $('tCue').textContent = lastRes && lastRes.pts ? 'Have some water. Points banked and it\'s ticked off for this week.' : 'Have some water. It\'s ticked off for this week.';
+      $('tWhere').textContent = ''; $('tDots').innerHTML = '';
+      $('tNext').innerHTML = keyFor(sessionDay).toLowerCase().includes('rain') ? '' : '<div class="unlocks"><button type="button" class="start alt small" data-round="shoot">Shooting round →</button><button type="button" class="start alt small" data-round="lay">Layups &amp; board work →</button></div><small class="unl">Both unlocked. Pick one, or do both.</small>';
+      $('tBar').style.width = '100%'; $('tGo').textContent = 'Finish'; $('tSkip').disabled = true; $('tBack').disabled = true;
+      return;
+    }
+    const s = seq[idx];
+    t.dataset.p = s.p; t.dataset.shown = ''; $('tPts').hidden = true;
+    $('tSecs').hidden = !!s.hold; $('tList').hidden = !(s.hold || s.p === 'break');
+    if (!s.hold) setFig(['work', 'rest', 'warm', 'cool'].includes(s.p) ? (s.fig || s.n) : null);
+    if (s.p === 'break') {
+      // timed 30 s break: what's next, a countdown, and the rest choice for the coming block
+      $('tPhase').textContent = 'Break';
+      $('tEx').textContent = s.b ? `Next: block ${s.b} of ${s.nb} · ${s.n}` : s.pf ? 'Next: plank finisher' : 'Next: cool-down';
+      if (listFor !== idx) {
+        listFor = idx;
+        $('tList').innerHTML = s.list.map((e, i) =>
+          `<li class="has"><div class="card-fig" data-ex="${esc(e.fig || e.n)}"></div><div><small>${s.b ? (i ? 'Even rounds' : 'Odd rounds') : s.pf ? (i ? 'Sets' : 'Exercise') : 'Stretch ' + (i + 1)}${e.hand ? ' · right hand, then left' : ''}</small><b>${e.n}</b><span>${e.c}</span></div></li>`).join('')
+          + (s.more ? `<li><small>Then</small><span>${s.more} more stretches</span></li>` : '');
+        Fig.hydrate($('tList'));
+      }
+      $('tSecs').textContent = counting ? Math.max(1, Math.ceil((countEnd - performance.now()) / 1000)) : Math.ceil(remaining);
+      $('tCue').textContent = s.c; $('tWhere').textContent = ''; $('tDots').innerHTML = '';
+      const pick = s.rk0 ? `<div class="rest-pick">${restPicker(s.rk0)}</div>` : '';
+      if (pickFor !== idx + ':' + ballRest + ':' + workRest) { pickFor = idx + ':' + ballRest + ':' + workRest; $('tNext').innerHTML = pick; }
+      const el = seq.slice(1, idx).reduce((a, x) => a + x.len, 0) + (s.len - remaining);
+      $('tBar').style.width = Math.min(100, el / totalLen() * 100) + '%';
+      $('tGo').textContent = running || counting ? 'Pause' : 'Go'; $('tSkip').disabled = false; $('tBack').disabled = false;
+      if (counting) $('tPhase').textContent = 'Starting in';
+      return;
+    }
+    listFor = null; pickFor = null;
+    if (s.hold) {
+      $('tPhase').textContent = 'Set up';
+      $('tEx').textContent = s.b ? `Block ${s.b} of ${s.nb}: ${s.n}` : s.n;
+      $('tList').innerHTML = s.list.map((e, i) =>
+        `<li class="has"><div class="card-fig" data-ex="${esc(e.fig || e.n)}"></div><div><small>${s.b ? (i ? 'Even rounds' : 'Odd rounds') : s.pf ? (i ? 'Sets' : 'Exercise') : 'Stretch ' + (i + 1)}${e.hand ? ' · right hand, then left' : ''}</small><b>${e.n}</b><span>${e.c}</span></div></li>`).join('')
+        + (s.more ? `<li><small>Then</small><span>${s.more} more stretches</span></li>` : '');
+      Fig.hydrate($('tList')); setFig(null);
+      $('tCue').textContent = s.c; $('tWhere').textContent = ''; $('tDots').innerHTML = '';
+      $('tNext').innerHTML = '<b>Tap Go when you\'re set up</b>';
+      $('tGo').textContent = 'Go'; $('tSkip').disabled = false; $('tBack').disabled = false;
+      const el = seq.slice(1, idx).reduce((a, x) => a + x.len, 0);
+      $('tBar').style.width = Math.min(100, el / totalLen() * 100) + '%';
+      return;
+    }
+    $('tPhase').textContent = LABEL[s.p];
+    $('tEx').textContent = s.p === 'rest' ? 'Next: ' + s.n : s.n;
+    $('tSecs').textContent = Math.ceil(remaining);
+    $('tCue').textContent = s.c || '';
+    $('tWhere').textContent = s.where || (s.b ? `${s.kind} · Block ${s.b} of ${s.nb} · Round ${s.r} of ${ROUNDS}` : '');
+    $('tDots').innerHTML = (s.b || s.nr) ? Array.from({ length: s.nr || ROUNDS }, (_, i) => {
+      const n = i + 1; const c = n < s.r || (n === s.r && s.p === 'rest') ? 'done' : n === s.r ? 'now' : '';
+      return `<span class="${c}"></span>`; }).join('') : '';
+    const nx = seq[idx + 1];
+    $('tNext').innerHTML = nx && s.p !== 'rest' ? `Up next: <b>${nx.p === 'rest' ? 'Rest' : nx.p === 'break' ? '30s break, then ' + (nx.b ? nx.n.toLowerCase() : 'cool-down') : nx.n}</b>` : (!nx ? 'Last one!' : '');
+    const elapsed = seq.slice(1, idx).reduce((a, x) => a + x.len, 0) + (idx ? s.len - remaining : 0);
+    $('tBar').style.width = Math.min(100, elapsed / totalLen() * 100) + '%';
+    $('tGo').textContent = running ? 'Pause' : 'Go';
+    $('tSkip').disabled = false; $('tBack').disabled = idx === 0;
+    if (counting) {
+      t.dataset.p = 'ready';
+      $('tPhase').textContent = 'Starting in';
+      $('tSecs').textContent = Math.max(1, Math.ceil((countEnd - performance.now()) / 1000));
+      $('tNext').innerHTML = s.p === 'rest' ? '' : `Get ready for <b>${s.n}</b>`;
+      $('tGo').textContent = 'Pause';
+    }
+  }
+
+  $('tGo').addEventListener('click', () => {
+    if (idx >= seq.length) { copyOnTap(); return exit(); }
+    if (counting) { stopClock(); renderTimer(); return; }
+    if (seq[idx].hold) {
+      go(idx + 1, false);
+      const s = seq[idx];
+      if (idx < seq.length) countIn(s.p === 'work' ? 'Get ready. ' + s.n : s.n);
+      return;
+    }
+    if (running) { trkPause(seq[idx]); stopClock(); renderTimer(); }
+    else countIn(seq[idx].p === 'work' && remaining >= seq[idx].len ? 'Get ready. ' + seq[idx].n : null);
+  });
+  $('tSkip').addEventListener('click', () => { if (idx < seq.length) trkSkip(seq[idx]); if (counting) stopClock(); go(idx + 1, false); });
+  $('tBack').addEventListener('click', () => { if (counting) stopClock(); go(idx - 1, false); });
+  $('tExit').addEventListener('click', exit);
+  document.addEventListener('visibilitychange', () => { if (running && document.visibilityState === 'visible') keepAwake(); });
+
+  renderWeek(); renderDetail();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+</script>
+</body>
+</html>
