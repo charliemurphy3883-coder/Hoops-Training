@@ -48,7 +48,7 @@ img { max-width: 100%; }
 </script>
 </head>
 <body>
-<div class="ver" aria-label="App version">v1.0 · 31 Oct</div>
+<div class="ver" aria-label="App version">v1.1 · 31 Oct</div>
 <style>
 /* Layout: arena scoreboard. Week strip of day tiles → workout card → full-screen timer. Single deliberate dark "indoor court" theme. */
 :root {
@@ -1792,8 +1792,7 @@ window.Player3D = (() => {
     }).join('');
     $('doneCount').textContent = Object.keys(done).filter(i => PLAN[i]).length;
     const P = totalPts(); $('ptsTotal').textContent = P.toLocaleString();
-    if (!$('restoreBox')) $('rtHome').innerHTML = restoreBanner() + rewardTrack(P);
-    else $('rtHome').lastElementChild.outerHTML = rewardTrack(P);
+    $('rtHome').innerHTML = rewardTrack(P);
     $('statsBody').innerHTML = statsHTML();
   }
 
@@ -1850,7 +1849,7 @@ window.Player3D = (() => {
       </form>
       <div class="pu">
         <h3>Backup &amp; restore</h3>
-        <p>His save code is copied to the clipboard each time he taps Finish. To keep a backup, copy it here and paste it into Notes. To restore, paste a save code into the second box.</p>
+        <p>Copy his save code and keep it in Notes as a backup. If his progress is ever lost (new iPad, icon deleted, app reset), paste a save code into the second box and tap Restore. Restoring adds to what's there, so nothing is lost.</p>
         <textarea id="puSave" rows="2" readonly aria-label="Current save code">Making save code…</textarea>
         <div class="pu-btns"><button type="button" class="start small" data-pu="copy">Copy save code</button></div>
         <textarea id="puRestore" rows="2" placeholder="Paste a save code to restore" aria-label="Save code to restore"></textarea>
