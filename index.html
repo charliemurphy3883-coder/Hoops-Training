@@ -48,7 +48,7 @@ img { max-width: 100%; }
 </script>
 </head>
 <body>
-<div class="ver" aria-label="App version">v1.1 · 31 Oct</div>
+<div class="ver" aria-label="App version">v1.2 · 4 Nov</div>
 <style>
 /* Layout: arena scoreboard. Week strip of day tiles → workout card → full-screen timer. Single deliberate dark "indoor court" theme. */
 :root {
@@ -1847,6 +1847,13 @@ window.Player3D = (() => {
         ${pu.amsg ? `<p class="pu-msg${pu.aok ? ' ok' : ''}" role="status">${pu.amsg}</p>` : ''}
         <div class="pu-btns"><button type="submit" class="start small">Add points</button></div>
       </form>
+      <form class="pu" data-form="clearTimes">
+        <h3>Bonus round times</h3>
+        <p>Clear the saved shooting and layup times if any are wrong. His best times start again from his next round.</p>
+        <div class="pu-fields"><label>Parent code<input id="puCodeT" type="password" inputmode="numeric" autocomplete="off" maxlength="8"></label></div>
+        ${pu.tmsg ? `<p class="pu-msg${pu.tok ? ' ok' : ''}" role="status">${pu.tmsg}</p>` : ''}
+        <div class="pu-btns"><button type="submit" class="start small" name="what" value="shoot">Clear shooting times</button><button type="submit" class="start small" name="what" value="lay">Clear layup times</button></div>
+      </form>
       <div class="pu">
         <h3>Backup &amp; restore</h3>
         <p>Copy his save code and keep it in Notes as a backup. If his progress is ever lost (new iPad, icon deleted, app reset), paste a save code into the second box and tap Restore. Restoring adds to what's there, so nothing is lost.</p>
@@ -1978,6 +1985,13 @@ window.Player3D = (() => {
       const why = ((($('puWhy') || {}).value) || '').trim() || (n > 0 ? 'Points added by a parent' : 'Points removed by a parent');
       ledger.push({ d: today(), k: 'adjust', pts: n, why }); saveLedger();
       pu.amsg = `${n > 0 ? 'Added' : 'Removed'} ${Math.abs(n)} points. Total is now ${totalPts().toLocaleString()}.`; pu.aok = true;
+      renderWeek(); renderDetail(); return;
+    }
+    if (f.dataset.form === 'clearTimes') {
+      if (hashCode(code.trim()) !== parentHash) { pu.tmsg = 'That code isn\'t right. Try again.'; pu.tok = false; renderDetail(); return; }
+      const what = (e.submitter && e.submitter.value) || 'shoot';
+      logs[what].length = 0; store.set(RD[what].logKey, logs[what]);
+      pu.tmsg = `${RD[what].title} times cleared.`; pu.tok = true;
       renderWeek(); renderDetail(); return;
     }
     if (f.dataset.form === 'extra') {
@@ -2171,12 +2185,15 @@ window.Player3D = (() => {
   let shootDay = 0, sRunning = false, sFrom = 0, sIv = null, sCounting = false, sCountEnd = 0, sLastCount = null;
   const cur = () => D().data()[shootDay];
   const saveShots = () => D().save();
-  const shElapsed = sh => sh.elapsed + (sRunning ? (performance.now() - sFrom) / 1000 : 0);
+  // real clock time (not the iPad's 'while awake' clock), and the start time is saved, so sleep or closing the app loses nothing
+  const shElapsed = sh => sh.elapsed + (sh.since ? Math.max(0, (Date.now() - sh.since) / 1000) : 0);
   function openRound(m, day) {
     mode = m; shootDay = day;
     const data = D().data();
     if (!data[day] || data[day].done) data[day] = newShots();
     saveShots();
+    // the round was still running when the app was closed: carry on counting
+    if (data[day].since && !data[day].done) { sRunning = true; sCounting = false; clearInterval(sIv); sIv = setInterval(sTick, 500); }
     $('sTitle').textContent = D().title;
     $('timer').hidden = true; $('shoot').hidden = false; document.body.style.overflow = 'hidden';
     keepAwake(); renderShoot();
@@ -2184,7 +2201,7 @@ window.Player3D = (() => {
   const openShoot = day => openRound('shoot', day);
   function sStop() {
     const sh = cur();
-    if (sh && sRunning) { sh.elapsed = shElapsed(sh); sRunning = false; }
+    if (sh && sh.since) { sh.elapsed = shElapsed(sh); sh.since = null; }
     sRunning = false; sCounting = false; clearInterval(sIv); saveShots();
   }
   function closeShoot() {
@@ -2202,7 +2219,7 @@ window.Player3D = (() => {
   function sTick() {
     if (sCounting) {
       const r = (sCountEnd - performance.now()) / 1000, w = Math.ceil(r);
-      if (r <= 0) { sCounting = false; sRunning = true; sFrom = performance.now(); cur().started = true; beep(1046, .3, .3); }
+      if (r <= 0) { sCounting = false; sRunning = true; const c = cur(); c.since = Date.now(); c.started = true; saveShots(); beep(1046, .3, .3); }
       else if (w !== sLastCount) { sLastCount = w; beep(660, .1); }
     }
     renderShoot();
@@ -2484,7 +2501,11 @@ window.Player3D = (() => {
   $('tSkip').addEventListener('click', () => { if (idx < seq.length) trkSkip(seq[idx]); if (counting) stopClock(); go(idx + 1, false); });
   $('tBack').addEventListener('click', () => { if (counting) stopClock(); go(idx - 1, false); });
   $('tExit').addEventListener('click', exit);
-  document.addEventListener('visibilitychange', () => { if (running && document.visibilityState === 'visible') keepAwake(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (running || counting || sRunning || sCounting || !$('shoot').hidden) keepAwake();
+    if (!$('shoot').hidden) renderShoot();
+  });
 
   renderWeek(); renderDetail();
 })();
