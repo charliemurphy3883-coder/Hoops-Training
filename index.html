@@ -48,7 +48,7 @@ img { max-width: 100%; }
 </script>
 </head>
 <body>
-<div class="ver" aria-label="App version">v1.4 · 7 Nov</div>
+<div class="ver" aria-label="App version">v1.5 · 26 Nov</div>
 <style>
 /* Layout: arena scoreboard. Week strip of day tiles → workout card → full-screen timer. Single deliberate dark "indoor court" theme. */
 :root {
@@ -410,6 +410,68 @@ h1 { font: 900 clamp(2.6rem, 7vw, 4rem)/.9 var(--display); text-transform: upper
   #shoot .watch { font-size: clamp(3.5rem, 15vh, 6.5rem); }
   .grp { padding: 6px; }
 }
+/* ---- run day: 3 laps of the block, lap button by the front door */
+.part.runp h3 { color: var(--rest); }
+.timer[data-p="run"] { --phase: var(--rest); }
+#run[data-p="runready"], #run[data-p="runcount"] { --phase: var(--warm); }
+#run[data-p="rundone"] { --phase: var(--cool); }
+.r-mid { position: relative; max-width: 900px; width: 100%; margin: 0 auto; min-height: 0; overflow-y: auto; display: grid; gap: 10px; align-content: center; text-align: center; }
+.r-lapno { font: 900 clamp(1.8rem, 6vh, 3rem) var(--display); text-transform: uppercase; letter-spacing: .04em; }
+.r-total { color: var(--muted); font-size: clamp(1rem, 2.6vh, 1.25rem); }
+.r-total b { color: var(--fg); font-variant-numeric: tabular-nums; }
+.r-laps { list-style: none; margin: 4px auto 0; padding: 0; display: grid; gap: 8px; width: min(100%, 620px); }
+.r-laps li { display: grid; grid-template-columns: 4.5em 1fr auto auto; gap: 12px; align-items: baseline; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 16px; text-align: left; font-variant-numeric: tabular-nums; }
+.r-laps li > span:first-child { color: var(--muted); font: 700 1rem var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.r-laps b { font: 900 clamp(1.5rem, 4.6vh, 2.1rem) var(--display); }
+.r-laps small { color: var(--muted); font-size: .9rem; }
+.r-laps .vs { font-weight: 700; font-size: .95rem; }
+.r-laps .vs.good { color: var(--rest); } .r-laps .vs.bad { color: var(--ball); }
+.r-laps li.best { border-color: var(--rest); }
+.r-laps li.worst { border-color: color-mix(in srgb, var(--ball) 70%, var(--line)); }
+.r-laps .tag { grid-column: 2 / -1; font: 700 .8rem var(--body); letter-spacing: .04em; color: var(--rest); }
+.r-laps li.worst .tag { color: var(--ball); }
+.r-ctrl { display: grid; grid-template-columns: 1fr 2.4fr 1fr; gap: 12px; align-items: stretch; }
+.r-ctrl button { border-radius: 18px; padding: 18px 8px; border: 2px solid var(--line); background: var(--surface); font: 800 1.2rem var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.r-ctrl .main { background: var(--phase); border-color: var(--phase); color: #10151f; font-size: 1.8rem; }
+.r-ctrl button:disabled { opacity: .35; }
+#run[data-p="run"] .r-ctrl .main { min-height: 34vh; font-size: clamp(4rem, 14vh, 8rem); letter-spacing: .14em; border-radius: 28px; }
+#run[data-p="run"] .r-ctrl .main:active { transform: scale(.98); filter: brightness(1.15); }
+#run .r-ctrl .stop-armed { border-color: var(--ball); color: var(--ball); }
+.r-sum { display: grid; gap: 10px; justify-items: center; }
+.r-sum .big { font: 900 clamp(3.4rem, 13vh, 6.5rem)/.9 var(--display); font-variant-numeric: tabular-nums; }
+.r-sum .line { color: var(--muted); font-size: clamp(.95rem, 2.4vh, 1.15rem); max-width: 52ch; }
+.r-sum .line b { color: var(--fg); }
+.r-sum .pb { color: var(--rest); font: 800 1.2rem var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.r-chart { width: min(100%, 620px); margin: 6px 0; }
+.r-chart svg { display: block; width: 100%; height: auto; }
+.r-chart text { fill: var(--muted); font: 500 11px var(--body); }
+.r-chart .goal { stroke: var(--rest); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.r-chart .ln { fill: none; stroke: var(--brk); stroke-width: 2.5; }
+.r-chart .dot { fill: var(--brk); } .r-chart .dot.best { fill: var(--rest); } .r-chart .dot.last { stroke: var(--fg); stroke-width: 2; }
+.r-chart .grid { stroke: var(--line); stroke-width: 1; }
+.part.repp h3, .rep-card h3 { color: #e4002b; }
+.rep-card { display: grid; gap: 14px; border: 1px solid color-mix(in srgb, #e4002b 45%, var(--line)); border-radius: 18px; padding: 18px 20px; background: color-mix(in srgb, #e4002b 8%, var(--surface)); }
+.rep-card h3 { margin: 0; font: 700 1.15rem var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.rep-card p { margin: 0; color: var(--muted); max-width: 62ch; }
+.rep-card .logged { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.rep-card .logged b { font: 900 clamp(2.2rem, 6vw, 3.2rem)/1 var(--display); color: var(--rest); text-transform: uppercase; }
+.rep-card .logged span { color: var(--fg); font-weight: 600; }
+.rep-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.rep-card .start { background: #e4002b; border-color: #e4002b; color: #fff; }
+.rep-card .ghost { font-size: .95rem; }
+.rep-days { display: flex; flex-wrap: wrap; gap: 8px; }
+.rep-days label { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; font-size: .92rem; }
+.rep-days input { accent-color: #e4002b; width: 18px; height: 18px; }
+.day .wn.bulls { color: #ff4d5e; }
+.st-h { margin: 18px 0 8px; font: 700 1.05rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--rest); }
+.run-cta { background: color-mix(in srgb, var(--rest) 7%, var(--surface)); }
+.run-cta .shoot-ico svg { display: block; width: 100%; height: auto; }
+.st-table td.fast { color: var(--rest); font-weight: 700; }
+@media (min-aspect-ratio: 1/1) and (max-height: 900px) {
+  .r-laps li { padding: 6px 14px; }
+  #run[data-p="run"] .r-ctrl .main { min-height: 30vh; }
+  .r-ctrl button { padding: 14px 8px; }
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -498,6 +560,35 @@ h1 { font: 900 clamp(2.6rem, 7vw, 4rem)/.9 var(--display); text-transform: upper
       <button id="sBack" type="button">Back</button>
       <button id="sGo" class="main" type="button">Start</button>
       <button id="sPause" type="button">Pause</button>
+    </div>
+  </div>
+</section>
+
+<section class="timer" id="run" data-p="runready" hidden>
+  <div class="t-top">
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <span class="wname" id="rTitle">3-lap run</span>
+        <button class="ghost" id="rExit" type="button">Close</button>
+      </div>
+      <div class="bar"><i id="rBar"></i></div>
+    </div>
+  </div>
+  <div class="r-mid">
+    <div class="t-phase" id="rPhase"></div>
+    <div class="r-lapno" id="rLapNo"></div>
+    <div class="watch" id="rWatch"></div>
+    <div class="r-total" id="rTotal"></div>
+    <div class="r-sum" id="rSum" hidden></div>
+    <ol class="r-laps" id="rLaps"></ol>
+    <p class="t-cue" id="rCue"></p>
+  </div>
+  <div class="t-bot">
+    <div class="next" id="rNext"></div>
+    <div class="r-ctrl">
+      <button id="rUndo" type="button">Undo lap</button>
+      <button id="rGo" class="main" type="button">Start</button>
+      <button id="rStop" type="button">End run</button>
     </div>
   </div>
 </section>
@@ -1545,6 +1636,23 @@ window.Player3D = (() => {
     { k: 'ball', p: w.finish, fin: true },
   ];
 
+  // ---- Run day: same warm-up, ball handling and cool-down, but 3 laps of the block replace the strength and fitness blocks.
+  // One lap of our block (Park Rd, Yates, Kariwara St, Bennetts) is about 968 m. Goal pace: 4:00 per km.
+  const LAP_M = 968, RUN_LAPS = 3, GOAL_KM = 240, RUN_MIN_LAP = 60;          // seconds per km; a "lap" under 60 s is a mis-tap
+  const goalLap = GOAL_KM * LAP_M / 1000;                                       // 3:52 a lap
+  const RUN_EST = Math.round(goalLap * RUN_LAPS);                               // for the progress bar and session time
+  const RUN_PTS = 15, RUN_GOAL_PTS = 2;                                         // all 3 laps 15, +2 per lap at goal pace
+  const mmss = t => { const r = Math.max(0, Math.round(t)); return `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`; };
+  const perKm = secs => secs * 1000 / LAP_M;
+  for (const p of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat']) {
+    const base = WORKOUTS[p];
+    WORKOUTS['run_' + p] = { name: 'Run Day', run: true, gear: 'Ball + running shoes',
+      about: `${base.name} ball handling, then ${RUN_LAPS} laps of the block instead of the strength and fitness work. Goal: 4:00 per km, about ${mmss(goalLap)} a lap.`,
+      blocks: base.blocks.filter(b => b.k === 'ball') };
+    const cones = WORKOUTS['run_' + p].blocks.some(b => b.p.some(e => /cone/i.test(e.n + e.c)));
+    KIT['run_' + p] = ['Running shoes', 'Basketball', ...(cones ? ['2 cones'] : []), 'Water bottle', 'iPad standing by the front door for the run'];
+  }
+
   // Mon..Sun
   const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const PLAN = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -1576,6 +1684,7 @@ window.Player3D = (() => {
   const MIN_SCORED = 15 * 60, BLOCK_DONE_MIN = 6, PLANK_PTS = 4, ROUND_PTS = 20, PB_PTS = 2, STREAK_PTS = 5, STREAK_CAP = 5, WEEK_PTS = 10;   // streak bonus = 5 × days in a row (2 days 10, 3 days 15 ...)
   let ledger = store.get('ledger', []);          // { d: 'YYYY-MM-DD', k: 'workout'|'shoot'|'lay'|'streak'|'week'|'pb', pts, extra, why }
   let sessions = store.get('sessions', []);      // one record per run (workouts and bonus rounds)
+  let runLog = store.get('runLog', []);          // every finished 3-lap run: { d, laps: [secs], total, m, inSession }
   let extraOK = store.get('extraOK', {});        // parent-approved next scored run: { workout, shoot, lay }
   let rewardsSeen = store.get('rewardsSeen', 0); // how many surprise rewards have been celebrated
   const saveLedger = () => { if (ledger.length > 3000) ledger = ledger.slice(-3000); store.set('ledger', ledger); };
@@ -1599,8 +1708,8 @@ window.Player3D = (() => {
     return best;
   }
   // award points for a finished run; returns { pts, items: [[label, pts]], note }
-  function award(kind, base, items, extraItems) {
-    const d = today();
+  function award(kind, base, items, extraItems, onDay) {
+    const d = onDay || today();
     if (scoredOn(d, kind)) {
       if (!extraOK[kind]) return { pts: 0, items: [], note: 'practice' };
       extraOK[kind] = false; store.set('extraOK', extraOK);
@@ -1620,7 +1729,7 @@ window.Player3D = (() => {
 
   // ---- session tracker (only the timer running counts: pauses, count-ins and skipped time don't)
   let trk = null;
-  function trkStart(day, key) { trk = { d: today(), day, key, name: WORKOUTS[key].name, active: 0, last: null, pauses: 0, pauseMs: 0, pausedAt: null, skips: 0, skipped: {}, blocks: {}, planks: 0, nb: WORKOUTS[key].blocks.length }; }
+  function trkStart(day, key) { trk = { d: today(), day, key, name: WORKOUTS[key].name, isRun: !!WORKOUTS[key].run, run: null, active: 0, last: null, pauses: 0, pauseMs: 0, pausedAt: null, skips: 0, skipped: {}, blocks: {}, planks: 0, nb: WORKOUTS[key].blocks.length }; }
   function trkRun() { if (trk) { if (trk.pausedAt) { trk.pauseMs += Date.now() - trk.pausedAt; trk.pausedAt = null; } trk.last = performance.now(); } }
   function trkHalt() { if (trk && trk.last != null) { trk.active += (performance.now() - trk.last) / 1000; trk.last = null; } }
   function trkTick() { if (trk && trk.last != null) { const n = performance.now(); trk.active += (n - trk.last) / 1000; trk.last = n; } }
@@ -1636,8 +1745,13 @@ window.Player3D = (() => {
     let bDone = 0, bClean = 0, bCalm = 0;
     for (let b = 1; b <= t.nb; b++) { const B = t.blocks[b]; if (B && B.done >= BLOCK_DONE_MIN) { bDone++; if (!B.skips) bClean++; if (!B.pauses) bCalm++; } }
     const plankPts = Math.min(3, t.planks) * PLANK_PTS;
-    const base = bDone + bClean + bCalm + plankPts;
-    const items = [['Blocks finished', bDone], ['Blocks with no skips', bClean], ['Blocks with no pauses', bCalm], [`Planks held (${Math.min(3, t.planks)} of 3)`, plankPts]];
+    // run day: 3 ball blocks (9) + all 3 laps (15) + 2 per lap at goal pace (6) = 30, the same as a normal perfect workout
+    const laps = t.run ? t.run.laps : [], lapsOK = laps.length >= RUN_LAPS, atGoal = laps.filter(x => x <= goalLap).length;
+    const runPts = t.isRun ? (lapsOK ? RUN_PTS : 0) + atGoal * RUN_GOAL_PTS : 0;
+    const base = bDone + bClean + bCalm + (t.isRun ? runPts : plankPts);
+    const items = [['Blocks finished', bDone], ['Blocks with no skips', bClean], ['Blocks with no pauses', bCalm]].concat(t.isRun
+      ? [[`Run: all ${RUN_LAPS} laps`, lapsOK ? RUN_PTS : 0], [`Laps at goal pace (${atGoal} of ${RUN_LAPS})`, atGoal * RUN_GOAL_PTS]]
+      : [[`Planks held (${Math.min(3, t.planks)} of 3)`, plankPts]]);
     let res;
     if (!completed) res = { pts: 0, items: [], note: 'ended' };
     else if (t.active < MIN_SCORED) res = { pts: 0, items: [], note: 'short' };
@@ -1648,10 +1762,12 @@ window.Player3D = (() => {
         if (scoredOn(addDays(today(), -1), 'workout')) { const n = streakNow() + 1, m = Math.min(n, STREAK_CAP); extras.push([`Streak bonus (${n} days in a row${n > STREAK_CAP ? ', max' : ''})`, STREAK_PTS * m, 'streak']); }
         if (weekDaysScored() === 6 && !ledger.some(e => e.k === 'week' && e.d >= ymd(monday))) extras.push(['Full week bonus: all 7 days!', WEEK_PTS, 'week']);
       }
+      if (t.run && t.run.pb) extras.push(['New best run time', PB_PTS, 'pb']);
       res = award('workout', base, items, extras);
     }
     const rec = { d: t.d, type: 'workout', name: t.name, active: Math.round(t.active), pauses: t.pauses, pauseSecs: Math.round(t.pauseMs / 1000), skips: t.skips, skipped: t.skipped,
-      blocks: bDone, clean: bClean, calm: bCalm, planks: Math.min(3, t.planks), completed: !!completed, pts: res.pts, note: res.note };
+      blocks: bDone, clean: bClean, calm: bCalm, planks: Math.min(3, t.planks), completed: !!completed, pts: res.pts, note: res.note,
+      ...(t.run ? { run: { laps: t.run.laps, total: t.run.total } } : {}) };
     sessions.push(rec); saveSessions();
     trk = null;
     return Object.assign(res, { rec });
@@ -1728,21 +1844,45 @@ window.Player3D = (() => {
     const sk = {}; w.forEach(s => Object.entries(s.skipped || {}).forEach(([k, v]) => sk[k] = (sk[k] || 0) + v));
     const most = Object.entries(sk).sort((a, b) => b[1] - a[1])[0];
     const clean = doneW.reduce((a, s) => a + (s.clean || 0), 0), planks = doneW.reduce((a, s) => a + (s.planks || 0), 0);
-    const rounds = all.filter(s => s.type !== 'workout').length;
+    const rounds = all.filter(s => s.type === 'shoot' || s.type === 'lay' || (s.type !== 'workout' && s.type !== 'rep')).length, reps = all.filter(s => s.type === 'rep').length;
     const hm = s => { const m = Math.round(s / 60); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
     const tiles = [
       ['Total training', hrs >= 1 ? `${hrs.toFixed(1)} h` : hm(hrs * 3600)], ['This week', hm(weekSecs)], ['Workouts finished', doneW.length],
       ['Current streak', `${streakNow()} day${streakNow() === 1 ? '' : 's'}`], ['Best streak', `${bestStreak()} days`], ['Bonus rounds', rounds],
-      ['Clean blocks', clean], ['Planks held', planks], ['Pauses', pauses], ['Skips', skips],
+      ['Bulls trainings', reps], ['Clean blocks', clean], ['Planks held', planks], ['Pauses', pauses], ['Skips', skips],
     ];
     const recent = all.slice(-8).reverse();
+    const runRows = runLog.slice(-8).reverse(), runBest = runLog.length ? Math.min(...runLog.map(r => r.total)) : 0;
     const nice = d => { const x = new Date(d + 'T12:00:00'); return x.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }); };
     return `<div class="st-tiles">${tiles.map(([l, v]) => `<div class="st"><b>${v}</b><small>${l}</small></div>`).join('')}</div>
       ${most ? `<p class="st-note">Most skipped: <b>${most[0]}</b> (${most[1]} time${most[1] > 1 ? 's' : ''}). That's one to work on.</p>` : ''}
       ${recent.length ? `<div class="st-table"><table><thead><tr><th>Day</th><th>Session</th><th>Time</th><th>Pauses</th><th>Skips</th><th>Points</th></tr></thead><tbody>
         ${recent.map(s => `<tr><td>${nice(s.d)}</td><td>${s.name}${s.note === 'extra' ? ' <em>parent-approved</em>' : s.note === 'practice' ? ' <em>practice</em>' : s.note === 'short' ? ' <em>under 15 min</em>' : !s.completed ? ' <em>ended early</em>' : ''}</td>
           <td>${hm(s.active || 0)}</td><td>${s.type === 'workout' ? s.pauses : '–'}</td><td>${s.type === 'workout' ? s.skips : '–'}</td><td>${s.pts ? '+' + s.pts : '0'}</td></tr>`).join('')}
-      </tbody></table></div>` : '<p class="st-note">Finish your first session to start your stats.</p>'}`;
+      </tbody></table></div>` : '<p class="st-note">Finish your first session to start your stats.</p>'}
+      ${runLog.length ? `<h3 class="st-h">Runs · ${RUN_LAPS} laps of the block</h3>${runChart(runLog)}
+      <div class="st-table"><table><thead><tr><th>Day</th>${Array.from({ length: RUN_LAPS }, (_, i) => `<th>Lap ${i + 1}</th>`).join('')}<th>Total</th><th>Per km</th></tr></thead><tbody>
+        ${runRows.map(r => `<tr><td>${nice(r.d)}</td>${r.laps.map(x => `<td class="${x <= goalLap ? 'fast' : ''}">${mmss(x)}</td>`).join('')}<td>${r.total === runBest ? '<b>' + mmss(r.total) + '</b> best' : mmss(r.total)}</td><td>${mmss(perKm(r.total / r.laps.length))}</td></tr>`).join('')}
+      </tbody></table></div><p class="st-note">Green laps hit the goal of 4:00 per km (${mmss(goalLap)} a lap).</p>` : ''}`;
+  }
+  // average pace per km for recent runs; faster runs sit higher, dashed line is the 4:00 goal
+  function runChart(log, small) {
+    const L = log.slice(-12); if (!L.length) return '';
+    const W = 600, H = small ? 120 : 170, l = 44, r = 12, tp = 12, bt = 22;
+    const pace = L.map(x => perKm(x.total / x.laps.length));
+    let lo = Math.min(GOAL_KM, ...pace), hi = Math.max(GOAL_KM, ...pace);
+    lo = Math.floor((lo - 10) / 15) * 15; hi = Math.ceil((hi + 10) / 15) * 15;
+    const y = v => tp + (v - lo) / (hi - lo) * (H - tp - bt);
+    const x = i => L.length === 1 ? (l + W - r) / 2 : l + i * (W - l - r) / (L.length - 1);
+    const best = Math.min(...pace), ticks = [];
+    for (let v = lo; v <= hi; v += (hi - lo) > 90 ? 30 : 15) ticks.push(v);
+    return `<div class="r-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Average pace per km for the last ${L.length} runs. Higher is faster.">
+      ${ticks.map(v => `<line class="grid" x1="${l}" x2="${W - r}" y1="${y(v)}" y2="${y(v)}"/><text x="${l - 6}" y="${y(v) + 4}" text-anchor="end">${mmss(v)}</text>`).join('')}
+      <line class="goal" x1="${l}" x2="${W - r}" y1="${y(GOAL_KM)}" y2="${y(GOAL_KM)}"/><text x="${W - r}" y="${y(GOAL_KM) - 5}" text-anchor="end" style="fill:var(--rest)">Goal 4:00 /km</text>
+      ${L.length > 1 ? `<polyline class="ln" points="${pace.map((v, i) => `${x(i)},${y(v)}`).join(' ')}"/>` : ''}
+      ${pace.map((v, i) => `<circle class="dot${v === best ? ' best' : ''}${i === L.length - 1 ? ' last' : ''}" cx="${x(i)}" cy="${y(v)}" r="${i === L.length - 1 ? 6 : 4.5}"><title>${L[i].d}: ${mmss(v)} per km</title></circle>`).join('')}
+      <text x="${l}" y="${H - 5}">${L.length > 1 ? 'Older' : ''}</text><text x="${W - r}" y="${H - 5}" text-anchor="end">Latest · higher is faster</text>
+    </svg></div>`;
   }
 
   // rest between rounds depends on the type of block, and he can change it before starting or in any break
@@ -1751,11 +1891,25 @@ window.Player3D = (() => {
   const restLen = rk => rk === 'ball' ? ballRest : rk === 'work' ? workRest : COOL_REST;
   let voice = store.get('voice', true);
   let rainy = store.get('rain-' + weekKey, {});
+  let runDay = store.get('run-' + weekKey, {});
+  // ---- Bulls rep training: a day with his rep team counts as a full session (30 points, streak kept).
+  // A parent can set his usual rep days; those log automatically. He can also pick Bulls training on any day and log it.
+  const REP_PTS = 30;
+  let repSched = store.get('repSched', { days: [], mins: 120, since: null });
+  let repDay = store.get('rep-' + weekKey, {});            // this week's choice per day (true / false), overrides the usual days
+  let repSkip = store.get('repSkip', {});                  // dates taken off: training cancelled
+  let repMins = repSched.mins || 120, repPanel = '', repPanelDay = null;
+  const dateOf = i => addDays(ymd(monday), i);
+  const wdOf = d => (new Date(d + 'T12:00:00').getDay() + 6) % 7;
+  const mondayOf = d => addDays(d, -wdOf(d));
+  const isRep = i => repDay[i] != null ? !!repDay[i] : repSched.days.includes(i);
+  const repRec = d => sessions.filter(x => x.type === 'rep' && x.d === d).pop();
+  const hrsTxt = m => `${Math.round(m / 6) / 10} h`;
   let kitChecks = store.get('kit-' + weekKey, {});
   let shots = store.get('shoot-' + weekKey, {});
   for (const d in shots) if (!shots[d] || typeof shots[d].elapsed !== 'number') delete shots[d];
   let shootLog = store.get('shootLog', []);   // every finished round, kept across weeks
-  const keyFor = i => rainy[i] ? (PLAN[i] === 'sun' ? 'sunRain' : 'rain') : PLAN[i];
+  const keyFor = i => rainy[i] ? (PLAN[i] === 'sun' ? 'sunRain' : 'rain') : runDay[i] && PLAN[i] !== 'sun' ? 'run_' + PLAN[i] : PLAN[i];
   let selected = PLAN[todayIdx] ? todayIdx : PLAN.findIndex((p, i) => p && i >= todayIdx);
   if (selected < 0) selected = PLAN.findIndex(Boolean);
 
@@ -1786,6 +1940,13 @@ window.Player3D = (() => {
     const kindOf = blk => blk.label || (blk.k === 'ball' ? (blk.fin ? 'Ball handling finisher' : 'Ball handling') : blk.k === 'core' ? 'Core strength' : w.name);
     w.blocks.forEach((blk, bi) => {
       const b = blk.p, kind = kindOf(blk), rk = blk.k === 'ball' ? 'ball' : 'work';
+      if (w.run && blk.fin) {
+        // the run goes where the strength and fitness blocks would be: 30 s to get to the front door, then the lap screen
+        seq.push({ p: 'break', n: `${RUN_LAPS}-lap run`, rb: true, len: BLOCK_BREAK, c: 'Ball work done. Put the iPad at the front door.',
+          list: [{ n: `Run ${RUN_LAPS} laps of the block`, fig: 'High-knee sprint', c: `About ${LAP_M} m a lap. Goal: ${mmss(goalLap)} a lap (4:00 per km).` },
+                 { n: 'Tap LAP every time you pass the door', fig: 'Jog on the spot', c: 'The big button logs each lap. Lap 3 finishes the run.' }] });
+        seq.push({ p: 'run', n: `${RUN_LAPS}-lap run`, c: `Goal: ${mmss(goalLap)} a lap`, len: RUN_EST });
+      }
       // 30-second break before every block: shows what's next and runs straight on (pause if he needs longer)
       seq.push({ p: 'break', n: kind, rk0: rk, list: b, b: bi + 1, nb: w.blocks.length, len: BLOCK_BREAK,
         c: bi === 0 ? (/cones/.test(w.gear) ? 'Warm-up done. Grab your ball and set out your cones.' : 'Warm-up done. Grab your ball.') : 'Grab a drink of water and get set up.' });
@@ -1801,16 +1962,18 @@ window.Player3D = (() => {
         if (r < ROUNDS) { const nx = play(b[r % 2], r + 1); seq.push({ p: 'rest', rk, n: nx.n, fig: nx.fig, c: 'Shake it out', len: 0, r, b: bi + 1, nb: w.blocks.length, kind }); }
       }
     });
-    // plank finisher on every workout: 3 × 45 s, strength rest between
+    // plank finisher on every workout (not run day): 3 × 45 s, strength rest between
     const PL = PLANK_FINISH;
+    if (!w.run) {
     seq.push({ p: 'break', n: 'Plank finisher', rk0: 'work', list: [PL, { n: `${PLANK_SETS} × ${PLANK_LEN}s`, c: 'Rest between planks is your strength rest' }], len: BLOCK_BREAK,
       c: 'Last bit of work before the cool-down. Grab a mat.', pf: true });
     for (let r = 1; r <= PLANK_SETS; r++) {
       seq.push({ p: 'work', n: PL.n, fig: PL.n, c: r === PLANK_SETS ? 'Last one! ' + PL.c : PL.c, len: PLANK_LEN, r, nr: PLANK_SETS, kind: 'Plank finisher', where: `Plank finisher · Plank ${r} of ${PLANK_SETS}` });
       if (r < PLANK_SETS) seq.push({ p: 'rest', rk: 'work', n: PL.n, fig: PL.n, c: 'Shake it out', len: 0, r, nr: PLANK_SETS, kind: 'Plank finisher', where: `Plank finisher · Plank ${r} of ${PLANK_SETS}` });
     }
+    }
     seq.push({ p: 'break', n: 'Cool-down', list: COOLDOWN.slice(0, 2), more: COOLDOWN.length - 2, len: BLOCK_BREAK,
-      c: 'Planks done! Have a drink, then slow stretches to finish.' });
+      c: w.run ? 'Run and ball work done! Have a drink, then slow stretches to finish.' : 'Planks done! Have a drink, then slow stretches to finish.' });
     COOLDOWN.forEach((x, i) => {
       seq.push({ p: 'cool', n: x.n, fig: x.fig, c: x.c, len: x.len || COOL_LEN });
       if (i < COOLDOWN.length - 1) seq.push({ p: 'rest', rk: 'cool', n: COOLDOWN[i + 1].n, fig: COOLDOWN[i + 1].fig, c: 'Ease into the next stretch', len: 0 });
@@ -1828,7 +1991,7 @@ window.Player3D = (() => {
       const cls = ['day', !k && 'off', i === todayIdx && 'today', i === selected && k && 'sel'].filter(Boolean).join(' ');
       return `<button type="button" class="${cls}" data-i="${i}" ${k ? '' : 'disabled'}>
         <span class="dn">${i === todayIdx ? 'Today' : d}<span class="badges">${shots[i] && shots[i].done ? '<span class="sball" title="Shooting round done" aria-label="shooting round done"></span>' : ''}${lays[i] && lays[i].done ? '<span class="slay" title="Layups and board work done" aria-label="layups and board work done"></span>' : ''}${done[i] ? '<span class="tick" aria-label="done">✓</span>' : ''}</span></span>
-        ${w ? `<span class="wn">${w.name}</span><span class="wf">${Math.round(total(k) / 60)} min${rainy[i] ? ' · Indoors' : ''}</span>`
+        ${w ? `${isRep(i) ? `<span class="wn bulls">Bulls Training</span><span class="wf">${repRec(dateOf(i)) ? 'Logged ✓' : 'Rep team'}</span>` : `<span class="wn">${w.name}</span><span class="wf">${Math.round(total(k) / 60)} min${rainy[i] ? ' · Indoors' : k.startsWith('run_') ? ' · Run' : ''}</span>`}`
             : `<span class="wn">Rest or team training</span>`}
       </button>`;
     }).join('');
@@ -1878,6 +2041,17 @@ window.Player3D = (() => {
         ${pu.xmsg ? `<p class="pu-msg${pu.xok ? ' ok' : ''}" role="status">${pu.xmsg}</p>` : ''}
         <div class="pu-btns"><button type="submit" class="start small" name="what" value="workout">Workout</button><button type="submit" class="start small" name="what" value="shoot">Shooting round</button><button type="submit" class="start small" name="what" value="lay">Layups</button></div>
       </form>
+      <form class="pu" data-form="rep">
+        <h3>Bulls rep training days</h3>
+        <p>Tick the days he usually trains with his rep team. Those days log automatically as a full session (${REP_PTS} points, streak kept). If training is cancelled, open that day and tap Undo. For a one-off rep session, he can pick Bulls training on the day and log it.</p>
+        <div class="rep-days">${DAYS.map((dn, i) => `<label><input type="checkbox" name="rd" value="${i}" ${repSched.days.includes(i) ? 'checked' : ''}>${dn}</label>`).join('')}</div>
+        <div class="pu-fields">
+          <label>Usual length<select id="puRepMins">${[60, 90, 120, 150, 180].map(m => `<option value="${m}" ${(repSched.mins || 120) === m ? 'selected' : ''}>${hrsTxt(m)}</option>`).join('')}</select></label>
+          <label>Parent code<input id="puCodeR" type="password" inputmode="numeric" autocomplete="off" maxlength="8"></label>
+        </div>
+        ${pu.rmsg ? `<p class="pu-msg${pu.rok ? ' ok' : ''}" role="status">${pu.rmsg}</p>` : ''}
+        <div class="pu-btns"><button type="submit" class="start small">Save rep days</button></div>
+      </form>
       <form class="pu" data-form="adjust">
         <h3>Add points</h3>
         <p>Give back points that were lost, or add a bonus. Use a minus number to take points away.</p>
@@ -1906,6 +2080,55 @@ window.Player3D = (() => {
         <div class="pu-btns"><button type="button" class="start small" data-pu="restore">Restore</button></div>
       </div>`;
   }
+  function runCard() {
+    const best = runLog.length ? Math.min(...runLog.map(r => r.total)) : 0, last = runLog[runLog.length - 1];
+    const ico = `<svg viewBox="0 0 120 90" aria-hidden="true"><rect x="10" y="8" width="100" height="74" rx="10" fill="none" stroke="var(--line)" stroke-width="3"/><path d="M28 70 L18 22 L40 14 L100 70 Z" fill="none" stroke="var(--rest)" stroke-width="4" stroke-linejoin="round"/><circle cx="40" cy="14" r="6" fill="var(--warm)"/></svg>`;
+    return `<div class="shoot-cta run-cta">
+      <div class="shoot-ico">${ico}</div>
+      <div style="min-width:0">
+        <h3>${RUN_LAPS}-lap run <span>Goal 4:00 per km · ${mmss(goalLap)} a lap</span></h3>
+        <p>${last ? `Best <b>${mmss(best)}</b> · Last <b>${mmss(last.total)}</b> (${last.laps.map(mmss).join(', ')}) · ${runLog.length} run${runLog.length > 1 ? 's' : ''}` : 'Your lap times will show here after your first run.'}</p>
+        ${runLog.length > 1 ? runChart(runLog, true) : ''}
+        <p class="prog">The run is part of today's session. You can also time a run on its own (no points).</p>
+      </div>
+      <button class="start alt" data-runonly type="button">Run on its own</button>
+    </div>`;
+  }
+  function repDetail(unlocked, byParent, roundCard) {
+    const d = dateOf(selected), r = repRec(d), future = d > today(), sched = repSched.days.includes(selected);
+    const durs = [60, 90, 120, 150, 180];
+    $('detail').innerHTML = `
+      <div class="card-head">
+        <div style="min-width:0">
+          <p class="eyebrow">${selected === todayIdx ? "Today's session" : DAYS[selected]}${done[selected] ? ' · Done ✓' : ''}</p>
+          <h2>Bulls Training</h2>
+          <p class="focus">Training with your rep team counts as a full session: ${REP_PTS} points, and your streak keeps going.</p>
+        </div>
+      </div>
+      <div class="mode-row">
+        <span class="seg mode" role="group" aria-label="What are you doing today?">
+          <button type="button" data-mode="out" aria-pressed="false">${PLAN[selected] === 'sun' ? 'Normal' : 'Outside'}</button>
+          ${PLAN[selected] === 'sun' ? '' : `<button type="button" data-mode="run" aria-pressed="false">Run day · ${RUN_LAPS} laps</button>`}
+          <button type="button" data-mode="rain" aria-pressed="false">Rainy day · indoors</button>
+          <button type="button" data-mode="rep" aria-pressed="true">Bulls training</button>
+        </span>
+        ${sched ? '<span class="mode-note">One of your usual rep training days.</span>' : ''}
+      </div>
+      <div class="rep-card">
+        <h3>Rep team training</h3>
+        ${r ? `<div class="logged"><b>Logged ✓</b><span>${r.pts ? '+' + r.pts + ' points' : 'Points already banked today'} · ${hrsTxt(r.active / 60)} with the Bulls</span></div>
+          <p>${r.auto ? 'Logged automatically: this is one of your rep training days.' : 'Nice work at training.'} It's ticked off for this week.</p>
+          ${repPanelDay === selected ? repPanel : ''}
+          <div class="rep-row"><button type="button" class="ghost" data-repundo>Training cancelled? Undo</button></div>`
+        : future ? `<p>${sched ? 'This logs itself on the day.' : 'Log it on the day, after training.'}</p>`
+        : `<p>How long was training?</p>
+          <div class="rep-row"><span class="seg" role="group" aria-label="Training length">${durs.map(m => `<button type="button" data-repmins="${m}" aria-pressed="${repMins === m}">${hrsTxt(m)}</button>`).join('')}</span></div>
+          <div class="rep-row"><button class="start" type="button" data-replog>Log Bulls training</button><span class="mode-note">${scoredOn(d, 'workout') ? "Today's points are already banked, so this just ticks the day off." : `+${REP_PTS} points and your streak keeps going.`}</span></div>`}
+      </div>
+      ${roundCard('shoot') + roundCard('lay')}${parentPanel(unlocked, byParent)}`;
+    Fig.hydrate($('detail'));
+    if ($('puSave')) makeCode().then(c => { const b = $('puSave'); if (b) b.value = c; });
+  }
   function renderDetail() {
     const k = keyFor(selected), w = WORKOUTS[k];
     const kit = KIT[k], kc = kitChecks[selected + ':' + k] || [];
@@ -1927,7 +2150,9 @@ window.Player3D = (() => {
         <button class="start alt" data-open="${m}" type="button" ${unlocked ? '' : 'disabled'}>${!unlocked ? 'Locked' : sh && sh.done ? Rm.btn[2] : sh && sh.started ? Rm.btn[1] : Rm.btn[0]}</button>
       </div>`;
     };
-    const blocks = w.blocks.map((blk, i) => `<div class="part ${blk.k === 'ball' ? 'ballp' : blk.k === 'core' ? 'corep' : 'tab'}"><h3>${i + 1} · ${blk.label || (blk.k === 'ball' ? (blk.fin ? 'Ball finisher' : 'Ball handling') : blk.k === 'core' ? 'Core strength' : 'Focus')} <span>8 × ${WORK}s on / ${restLen(blk.k === 'ball' ? 'ball' : 'work')}s off</span></h3>
+    const runPart = `<div class="part runp"><h3>Run · ${RUN_LAPS} laps <span>goal ${mmss(goalLap)} a lap</span></h3><ul><li>${mini('High-knee sprint')}${RUN_LAPS} × ${LAP_M} m around the block</li><li>${mini('Jog on the spot')}Tap LAP at the front door</li></ul></div>`;
+    if (isRep(selected)) return repDetail(unlocked, byParent, roundCard);
+    const blocks = w.blocks.map((blk, i) => (w.run && blk.fin ? runPart : '') + `<div class="part ${blk.k === 'ball' ? 'ballp' : blk.k === 'core' ? 'corep' : 'tab'}"><h3>${i + 1} · ${blk.label || (blk.k === 'ball' ? (blk.fin ? 'Ball finisher' : 'Ball handling') : blk.k === 'core' ? 'Core strength' : 'Focus')} <span>8 × ${WORK}s on / ${restLen(blk.k === 'ball' ? 'ball' : 'work')}s off</span></h3>
       <ul>${blk.p.map((e, j) => `<li>${mini(e.fig || e.n)}<i>${j ? 'Even' : 'Odd'}</i>${e.n}${e.hand ? ' <em class="hand">R then L</em>' : ''}</li>`).join('')}</ul></div>`).join('');
     $('detail').innerHTML = `
       <div class="card-head">
@@ -1943,10 +2168,12 @@ window.Player3D = (() => {
       </div>
       <div class="mode-row">
         <span class="seg mode" role="group" aria-label="Where are you training?">
-          <button type="button" data-mode="out" aria-pressed="${!rainy[selected]}">${PLAN[selected] === 'sun' ? 'Normal' : 'Outside'}</button>
+          <button type="button" data-mode="out" aria-pressed="${!rainy[selected] && !w.run}">${PLAN[selected] === 'sun' ? 'Normal' : 'Outside'}</button>
+          ${PLAN[selected] === 'sun' ? '' : `<button type="button" data-mode="run" aria-pressed="${!!w.run}">Run day · ${RUN_LAPS} laps</button>`}
           <button type="button" data-mode="rain" aria-pressed="${!!rainy[selected]}">Rainy day · indoors</button>
+          <button type="button" data-mode="rep" aria-pressed="false">Bulls training</button>
         </span>
-        ${rainy[selected] ? '<span class="mode-note">Ball held only. No bouncing, no throwing.</span>' : ''}
+        ${rainy[selected] ? '<span class="mode-note">Ball held only. No bouncing, no throwing.</span>' : w.run ? `<span class="mode-note">${RUN_LAPS} laps of the block replace the strength work and planks.</span>` : ''}
       </div>
       <div class="kit">
         <h3>What you need</h3>
@@ -1955,7 +2182,7 @@ window.Player3D = (() => {
       <div class="parts">
         <div class="part warm"><h3>Warm-up <span>${fmt(WARMUP.reduce((a, x) => a + (x.len || WARM_LEN), 0))} · no rest</span></h3><ul>${WARMUP.map(x => `<li>${mini(x.fig || x.n)}${x.n}</li>`).join('')}</ul></div>
         ${blocks}
-        <div class="part corep"><h3>Plank finisher <span>${PLANK_SETS} × ${PLANK_LEN}s / ${restLen('work')}s off</span></h3><ul><li>${mini('Plank')}Plank</li></ul></div>
+        ${w.run ? '' : `<div class="part corep"><h3>Plank finisher <span>${PLANK_SETS} × ${PLANK_LEN}s / ${restLen('work')}s off</span></h3><ul><li>${mini('Plank')}Plank</li></ul></div>`}
         <div class="part cool"><h3>Cool-down <span>${fmt(COOLDOWN.reduce((a, x) => a + (x.len || COOL_LEN), 0))} · ${COOL_REST}s between</span></h3><ul>${COOLDOWN.map(x => `<li>${mini(x.fig || x.n)}${x.n}</li>`).join('')}</ul></div>
       </div>
       <div class="go-row">
@@ -1966,7 +2193,7 @@ window.Player3D = (() => {
         </div>
         <button class="start" id="startBtn" type="button">Start session</button>
       </div>
-      ${keyFor(selected).toLowerCase().includes('rain') ? '' : roundCard('shoot') + roundCard('lay')}${parentPanel(unlocked, byParent)}`;
+      ${w.run ? runCard() : ''}${keyFor(selected).toLowerCase().includes('rain') ? '' : roundCard('shoot') + roundCard('lay')}${parentPanel(unlocked, byParent)}`;
     Fig.hydrate($('detail'));
     if ($('puSave')) makeCode().then(c => { const b = $('puSave'); if (b) b.value = c; });
   }
@@ -1979,7 +2206,21 @@ window.Player3D = (() => {
     const r = e.target.closest('[data-brest], [data-wrest]');
     if (r) { setRest(r); renderWeek(); renderDetail(); return; }
     const m = e.target.closest('[data-mode]');
-    if (m) { rainy[selected] = m.dataset.mode === 'rain'; store.set('rain-' + weekKey, rainy); renderWeek(); renderDetail(); return; }
+    if (m) {
+      const md = m.dataset.mode;
+      rainy[selected] = md === 'rain'; runDay[selected] = md === 'run'; repDay[selected] = md === 'rep';
+      store.set('rain-' + weekKey, rainy); store.set('run-' + weekKey, runDay); store.set('rep-' + weekKey, repDay);
+      repPanel = ''; renderWeek(); renderDetail(); return;
+    }
+    const rm = e.target.closest('[data-repmins]');
+    if (rm) { repMins = +rm.dataset.repmins; renderDetail(); return; }
+    if (e.target.closest('[data-replog]')) {
+      const d = dateOf(selected), before = totalPts(), res = logRep(d, repMins, false);
+      if (res) { repPanel = res.pts ? pointsPanel(res, before) : ''; repPanelDay = selected; toast(res.pts ? `Bulls training logged: +${res.pts} points` : 'Bulls training logged. Today\'s points were already banked.'); }
+      renderWeek(); renderDetail(); return;
+    }
+    if (e.target.closest('[data-repundo]')) { unlogRep(dateOf(selected)); repDay[selected] = false; store.set('rep-' + weekKey, repDay); repPanel = ''; renderWeek(); renderDetail(); return; }
+    if (e.target.closest('[data-runonly]')) return openRun(false);
     const c = e.target.closest('[data-kit]');
     if (c) {
       const id = selected + ':' + keyFor(selected), arr = kitChecks[id] || [];
@@ -2020,6 +2261,17 @@ window.Player3D = (() => {
     const f = e.target.closest('form[data-form]'); if (!f) return;
     e.preventDefault();
     const code = (f.querySelector('input[type=password]') || {}).value || '';
+    if (f.dataset.form === 'rep') {
+      if (hashCode(code.trim()) !== parentHash) { pu.rmsg = 'That code isn\'t right. Try again.'; pu.rok = false; renderDetail(); return; }
+      const days = [...f.querySelectorAll('input[name=rd]:checked')].map(x => +x.value);
+      repSched = { days, mins: +(($('puRepMins') || {}).value || 120), since: today() }; store.set('repSched', repSched);
+      repMins = repSched.mins;
+      for (const i of Object.keys(repDay)) if (repDay[i] === false && days.includes(+i) && !repSkip[dateOf(+i)]) delete repDay[i];
+      store.set('rep-' + weekKey, repDay);
+      const n = autoRep();
+      pu.rmsg = days.length ? `Saved: ${days.map(i => DAYS[i]).join(', ')}.${n ? ` ${n} day${n > 1 ? 's' : ''} logged.` : ''}` : 'Saved: no usual rep days.'; pu.rok = true;
+      renderWeek(); renderDetail(); return;
+    }
     if (f.dataset.form === 'adjust') {
       if (hashCode(code.trim()) !== parentHash) { pu.amsg = 'That code isn\'t right. Try again.'; pu.aok = false; renderDetail(); return; }
       const n = Math.round(+(($('puPts') || {}).value || 0));
@@ -2414,6 +2666,7 @@ window.Player3D = (() => {
     if (i >= seq.length) return finish();
     idx = Math.max(0, i); remaining = seq[idx].len;
     const s = seq[idx];
+    if (s.p === 'run') { stopClock(); renderTimer(); openRun(true); return; }
     if (s.hold) {
       if (auto || running) {
         beep(784, .4, .3);
@@ -2425,7 +2678,8 @@ window.Player3D = (() => {
       beep(s.p === 'work' ? 1046 : 520, .3, .3);
       if (s.p === 'work') say(s.n);
       else if (s.p === 'rest') say(s.rk === 'cool' ? s.n : 'Rest. Next, ' + s.n);
-      else if (s.p === 'break') say(s.b ? `${s.c.split('.')[0]}. 30 seconds. Next, block ${s.b}, ${s.n}: ${s.list[0].n}, and ${s.list[1].n}.` : s.pf ? `Blocks done. 30 seconds, then the plank finisher: ${PLANK_SETS} planks of ${PLANK_LEN} seconds.` : 'Planks done. 30 seconds, then the cool-down.');
+      else if (s.p === 'break' && s.rb) say(`Ball work done. 30 seconds. Put your iPad at the front door for your ${RUN_LAPS} lap run.`);
+      else if (s.p === 'break') say(s.b ? `${s.c.split('.')[0]}. 30 seconds. Next, block ${s.b}, ${s.n}: ${s.list[0].n}, and ${s.list[1].n}.` : s.pf ? `Blocks done. 30 seconds, then the plank finisher: ${PLANK_SETS} planks of ${PLANK_LEN} seconds.` : trk && trk.isRun ? 'Nice work. 30 seconds, then the cool-down.' : 'Planks done. 30 seconds, then the cool-down.');
       else say(s.n);
     }
     if (running) endAt = performance.now() + remaining * 1000;
@@ -2472,11 +2726,11 @@ window.Player3D = (() => {
     if (s.p === 'break') {
       // timed 30 s break: what's next, a countdown, and the rest choice for the coming block
       $('tPhase').textContent = 'Break';
-      $('tEx').textContent = s.b ? `Next: block ${s.b} of ${s.nb} · ${s.n}` : s.pf ? 'Next: plank finisher' : 'Next: cool-down';
+      $('tEx').textContent = s.b ? `Next: block ${s.b} of ${s.nb} · ${s.n}` : s.rb ? `Next: ${s.n}` : s.pf ? 'Next: plank finisher' : 'Next: cool-down';
       if (listFor !== idx) {
         listFor = idx;
         $('tList').innerHTML = s.list.map((e, i) =>
-          `<li class="has"><div class="card-fig" data-ex="${esc(e.fig || e.n)}"></div><div><small>${s.b ? (i ? 'Even rounds' : 'Odd rounds') : s.pf ? (i ? 'Sets' : 'Exercise') : 'Stretch ' + (i + 1)}${e.hand ? ' · right hand, then left' : ''}</small><b>${e.n}</b><span>${e.c}</span></div></li>`).join('')
+          `<li class="has"><div class="card-fig" data-ex="${esc(e.fig || e.n)}"></div><div><small>${s.b ? (i ? 'Even rounds' : 'Odd rounds') : s.rb ? (i ? 'Each lap' : 'The run') : s.pf ? (i ? 'Sets' : 'Exercise') : 'Stretch ' + (i + 1)}${e.hand ? ' · right hand, then left' : ''}</small><b>${e.n}</b><span>${e.c}</span></div></li>`).join('')
           + (s.more ? `<li><small>Then</small><span>${s.more} more stretches</span></li>` : '');
         Fig.hydrate($('tList'));
       }
@@ -2491,6 +2745,16 @@ window.Player3D = (() => {
       return;
     }
     listFor = null; pickFor = null;
+    if (s.p === 'run') {
+      setFig('High-knee sprint'); $('tSecs').hidden = true; $('tList').hidden = true;
+      $('tPhase').textContent = 'Run'; $('tEx').textContent = `${RUN_LAPS} laps of the block`;
+      $('tCue').textContent = `Goal: ${mmss(goalLap)} a lap (4:00 per km).`; $('tWhere').textContent = ''; $('tDots').innerHTML = '';
+      $('tNext').innerHTML = '<b>Tap Go to open the lap screen</b>';
+      $('tGo').textContent = 'Go'; $('tSkip').disabled = false; $('tBack').disabled = false;
+      const el = seq.slice(1, idx).reduce((a, x) => a + x.len, 0);
+      $('tBar').style.width = Math.min(100, el / totalLen() * 100) + '%';
+      return;
+    }
     if (s.hold) {
       $('tPhase').textContent = 'Set up';
       $('tEx').textContent = s.b ? `Block ${s.b} of ${s.nb}: ${s.n}` : s.n;
@@ -2531,6 +2795,7 @@ window.Player3D = (() => {
   $('tGo').addEventListener('click', () => {
     if (idx >= seq.length) { copyOnTap(); return exit(); }
     if (counting) { stopClock(); renderTimer(); return; }
+    if (seq[idx].p === 'run') return openRun(true);
     if (seq[idx].hold) {
       go(idx + 1, false);
       const s = seq[idx];
@@ -2540,14 +2805,204 @@ window.Player3D = (() => {
     if (running) { trkPause(seq[idx]); stopClock(); renderTimer(); }
     else countIn(seq[idx].p === 'work' && remaining >= seq[idx].len ? 'Get ready. ' + seq[idx].n : null);
   });
-  $('tSkip').addEventListener('click', () => { if (idx < seq.length) trkSkip(seq[idx]); if (counting) stopClock(); go(idx + 1, false); });
+  $('tSkip').addEventListener('click', () => { if (idx < seq.length) { trkSkip(seq[idx]); if (seq[idx].p === 'run' && trk) { trk.skips++; trk.skipped[seq[idx].n] = (trk.skipped[seq[idx].n] || 0) + 1; } } if (counting) stopClock(); go(idx + 1, false); });
   $('tBack').addEventListener('click', () => { if (counting) stopClock(); go(idx - 1, false); });
   $('tExit').addEventListener('click', exit);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
-    if (running || counting || sRunning || sCounting || !$('shoot').hidden) keepAwake();
+    if (running || counting || sRunning || sCounting || !$('shoot').hidden || !$('run').hidden) keepAwake();
+    if (!$('run').hidden) renderRun();
     if (!$('shoot').hidden) renderShoot();
   });
+
+
+  // ---- run screen: the iPad stands by the front door; one big button logs each lap.
+  // Real clock time, and the run is saved as it goes, so the screen locking or the app closing loses nothing.
+  let rn = store.get('runNow', null), rnIv = null, rnCount = 0, rnStopArm = 0, rnLast = null, rnMsg = '', rnMsgEnd = 0;
+  const saveRn = () => { if (rn) store.set('runNow', rn); else try { localStorage.removeItem('runNow'); } catch (e) {} };
+  const rnLaps = () => rn ? rn.marks.map((m, i) => (m - (i ? rn.marks[i - 1] : rn.start)) / 1000) : [];
+  function openRun(inSession) {
+    if (rn) { rn.inSession = inSession; saveRn(); } else rnLast = null;
+    rnMsg = ''; rnStopArm = 0;
+    $('run').hidden = false; document.body.style.overflow = 'hidden'; keepAwake();
+    $('run').dataset.from = inSession ? 'session' : 'solo';
+    clearInterval(rnIv); rnIv = setInterval(renderRun, 250); renderRun();
+  }
+  function closeRun() {
+    clearInterval(rnIv); rnIv = null; $('run').hidden = true;
+    const fromSession = $('run').dataset.from === 'session';
+    if (!fromSession) { document.body.style.overflow = ''; try { wake && wake.release(); } catch (e) {} wake = null; renderWeek(); renderDetail(); }
+  }
+  function runStart() {
+    rnCount = Date.now() + 3000; rnLast = null; rnMsg = ''; say('Ready. 3, 2, 1');
+    let last = 4;
+    const t = setInterval(() => {
+      const r = Math.ceil((rnCount - Date.now()) / 1000);
+      if (r !== last && r > 0) { last = r; beep(660, .1); }
+      if (r <= 0) {
+        clearInterval(t); rnCount = 0; beep(1046, .4, .3); say('Go!');
+        rn = { start: Date.now(), marks: [], inSession: $('run').dataset.from === 'session' }; saveRn();
+      }
+      renderRun();
+    }, 100);
+    renderRun();
+  }
+  function runLap() {
+    if (!rn) return;
+    const nowT = Date.now(), from = rn.marks.length ? rn.marks[rn.marks.length - 1] : rn.start, secs = (nowT - from) / 1000;
+    if (secs < RUN_MIN_LAP) { rnMsg = 'Too quick to be a lap. Keep running!'; rnMsgEnd = Date.now() + 4000; beep(330, .2); renderRun(); return; }
+    rn.marks.push(nowT); saveRn(); rnMsg = '';
+    const n = rn.marks.length, diff = secs - goalLap;
+    beep(988, .25, .3);
+    if (n >= RUN_LAPS) return runFinish();
+    say(`Lap ${n}. ${Math.floor(secs / 60)} ${String(Math.round(secs % 60)).padStart(2, '0')}. ${diff <= 0 ? 'On goal pace.' : ''} ${RUN_LAPS - n} to go.`);
+    renderRun();
+  }
+  function runFinish() {
+    const laps = rnLaps().map(x => Math.round(x * 10) / 10), total = laps.reduce((a, x) => a + x, 0);
+    const prevBest = runLog.length ? Math.min(...runLog.map(r => r.total)) : 0, prev = runLog[runLog.length - 1] || null;
+    const entry = { d: today(), laps, total: Math.round(total * 10) / 10, m: LAP_M, inSession: rn.inSession };
+    runLog.push(entry); if (runLog.length > 500) runLog = runLog.slice(-500); store.set('runLog', runLog);
+    rnLast = { entry, prevBest, prev, pb: !!prevBest && entry.total < prevBest };
+    if (rn.inSession && trk) { trk.run = { laps, total: entry.total, pb: rnLast.pb }; trk.active += total; }
+    rn = null; saveRn();
+    say(`Run done. ${Math.floor(total / 60)} minutes ${Math.round(total % 60)}. ${rnLast.pb ? 'New best time!' : 'Great work!'}`);
+    if (rnLast.pb || laps.every(x => x <= goalLap)) setTimeout(() => confetti(3000), 200);
+    renderRun();
+  }
+  function lapRows(laps, live) {
+    const best = laps.length > 1 ? Math.min(...laps) : null, worst = laps.length > 1 ? Math.max(...laps) : null;
+    return laps.map((x, i) => {
+      const d = x - goalLap, cls = !live && x === best ? 'best' : !live && x === worst ? 'worst' : '';
+      return `<li class="${cls}"><span>Lap ${i + 1}</span><b>${mmss(x)}</b><small>${mmss(perKm(x))} /km</small><span class="vs ${d <= 0 ? 'good' : 'bad'}">${d <= 0 ? mmss(-d) + ' under goal' : mmss(d) + ' over goal'}</span>${cls ? `<span class="tag">${cls === 'best' ? 'Best lap' : 'Slowest lap'}</span>` : ''}</li>`;
+    }).join('');
+  }
+  function renderRun() {
+    const R = $('run'); if (R.hidden) return;
+    const solo = R.dataset.from !== 'session';
+    $('rExit').textContent = rn ? 'Hide' : 'Close';
+    $('rStop').textContent = rnStopArm > Date.now() ? 'Tap again to end' : 'End run'; $('rStop').classList.toggle('stop-armed', rnStopArm > Date.now());
+    $('rSum').hidden = true; $('rWatch').hidden = false; $('rLaps').hidden = false;
+    if (rnLast && !rn) {
+      // summary after lap 3
+      const { entry: e, prevBest, prev, pb } = rnLast, avg = e.total / e.laps.length, atGoal = e.laps.filter(x => x <= goalLap).length;
+      R.dataset.p = 'rundone'; $('rPhase').textContent = 'Run done'; $('rLapNo').textContent = pb ? 'New best time!' : 'Great run!';
+      $('rWatch').hidden = true; $('rTotal').innerHTML = '';
+      const vsLast = prev ? e.total - prev.total : null;
+      $('rSum').hidden = false;
+      $('rSum').innerHTML = `<div class="big">${mmss(e.total)}</div>
+        <div class="line">Average <b>${mmss(perKm(avg))} per km</b> · goal 4:00 · <b>${atGoal} of ${e.laps.length}</b> laps at goal pace</div>
+        <div class="line">${prev ? (vsLast < 0 ? `<b>${mmss(-vsLast)} faster</b> than last time (${mmss(prev.total)}).` : vsLast > 0 ? `${mmss(vsLast)} slower than last time (${mmss(prev.total)}).` : 'Same time as last time.') : 'Your first timed run. This is the time to beat.'}${prevBest && !pb ? ` Best: <b>${mmss(prevBest)}</b>.` : ''}</div>`;
+      $('rLaps').innerHTML = lapRows(e.laps, false);
+      $('rCue').textContent = atGoal === e.laps.length ? 'Every lap at goal pace. Awesome!' : 'Have some water and walk it off.';
+      $('rNext').textContent = solo ? 'Saved to your run history.' : 'Saved. Next: ball finisher, then the cool-down.';
+      $('rGo').textContent = solo ? 'Done' : 'Keep going →'; $('rUndo').disabled = true; $('rStop').disabled = true;
+      $('rBar').style.width = '100%';
+      return;
+    }
+    if (rnCount) {
+      R.dataset.p = 'runcount'; $('rPhase').textContent = 'Starting in'; $('rLapNo').textContent = '';
+      $('rWatch').textContent = Math.max(1, Math.ceil((rnCount - Date.now()) / 1000)); $('rTotal').textContent = ''; $('rLaps').innerHTML = ''; $('rCue').textContent = 'Get to the door. Go on the beep!';
+      $('rNext').textContent = ''; $('rGo').textContent = '…'; $('rGo').disabled = true; $('rUndo').disabled = true; $('rStop').disabled = true; $('rBar').style.width = '0%';
+      return;
+    }
+    $('rGo').disabled = false;
+    if (!rn) {
+      // ready
+      const best = runLog.length ? Math.min(...runLog.map(r => r.total)) : 0, last = runLog[runLog.length - 1];
+      R.dataset.p = 'runready'; $('rPhase').textContent = 'Run'; $('rLapNo').textContent = `${RUN_LAPS} laps of the block`;
+      $('rWatch').textContent = mmss(0); $('rTotal').innerHTML = `Goal: <b>${mmss(goalLap)}</b> a lap · <b>${mmss(goalLap * RUN_LAPS)}</b> for all ${RUN_LAPS} (4:00 per km)`;
+      $('rLaps').innerHTML = ''; $('rCue').innerHTML = last ? `Last run <b>${mmss(last.total)}</b>${best < last.total ? ` · best <b>${mmss(best)}</b>` : ''}. Stand the iPad by the front door where you can reach it.` : 'Stand the iPad by the front door where you can reach it. Tap LAP every time you get back to the door.';
+      $('rNext').textContent = solo ? 'Timed run on its own: saved to your history, no points.' : 'Tap Start, then run. Every time you pass the door, tap the big button.';
+      $('rGo').textContent = 'Start'; $('rUndo').disabled = true; $('rStop').disabled = !solo && false; $('rStop').textContent = solo ? 'Close' : 'Skip run';
+      $('rBar').style.width = '0%';
+      return;
+    }
+    // running
+    const laps = rnLaps(), n = laps.length, from = n ? rn.marks[n - 1] : rn.start, cur = (Date.now() - from) / 1000, tot = (Date.now() - rn.start) / 1000;
+    R.dataset.p = 'run'; $('rPhase').textContent = 'Running'; $('rLapNo').textContent = `Lap ${n + 1} of ${RUN_LAPS}`;
+    $('rWatch').textContent = mmss(cur);
+    $('rTotal').innerHTML = `Total <b>${mmss(tot)}</b> · goal for this lap <b>${mmss(goalLap)}</b>`;
+    $('rLaps').innerHTML = lapRows(laps, true);
+    if (rnMsg && rnMsgEnd && Date.now() > rnMsgEnd) { rnMsg = ''; rnMsgEnd = 0; }
+    $('rCue').textContent = rnMsg || (cur > goalLap ? 'Past goal pace. Finish strong!' : '');
+    $('rNext').textContent = n === RUN_LAPS - 1 ? 'Last lap! Tap LAP at the door to finish.' : 'Tap LAP when you get back to the door.';
+    $('rGo').textContent = 'Lap'; $('rUndo').disabled = !n; $('rStop').disabled = false;
+    $('rBar').style.width = Math.min(100, (n + Math.min(1, cur / goalLap)) / RUN_LAPS * 100) + '%';
+  }
+  $('rGo').addEventListener('click', () => {
+    if (rnLast && !rn) {
+      rnLast = null;
+      const solo = $('run').dataset.from !== 'session'; closeRun();
+      if (!solo && idx < seq.length && seq[idx].p === 'run') { go(idx + 1, true); play(); }
+      return;
+    }
+    if (rnCount) return;
+    if (!rn) return runStart();
+    runLap();
+  });
+  $('rUndo').addEventListener('click', () => { if (rn && rn.marks.length) { rn.marks.pop(); saveRn(); rnMsg = 'Last lap undone.'; rnMsgEnd = Date.now() + 4000; renderRun(); } });
+  $('rStop').addEventListener('click', () => {
+    const solo = $('run').dataset.from !== 'session';
+    if (!rn) {
+      if (solo) return closeRun();
+      // skip the run inside a session
+      if (trk) { trk.skips++; trk.skipped[`${RUN_LAPS}-lap run`] = (trk.skipped[`${RUN_LAPS}-lap run`] || 0) + 1; }
+      closeRun(); if (idx < seq.length && seq[idx].p === 'run') { go(idx + 1, true); play(); }
+      return;
+    }
+    if (rnStopArm > Date.now()) { rn = null; saveRn(); rnStopArm = 0; rnMsg = ''; renderRun(); return; }
+    rnStopArm = Date.now() + 3000; renderRun(); setTimeout(renderRun, 3100);
+  });
+  $('rExit').addEventListener('click', () => {
+    if (rnLast && !rn) { $('rGo').click(); return; }
+    closeRun();
+  });
+  // the app was closed in the middle of a run: open the lap screen again and carry on
+  if (rn && rn.start && Date.now() - rn.start < 3 * 3600e3) setTimeout(() => openRun(false), 300);
+  else if (rn) { rn = null; saveRn(); }
+
+  // ---- Bulls rep training: log a date as a full session, take it back, and log the usual rep days automatically
+  function streakTo(d) { let n = 0; while (scoredOn(d, 'workout')) { n++; d = addDays(d, -1); } return n; }
+  function logRep(d, mins, auto) {
+    if (repRec(d)) return null;
+    let res = { pts: 0, items: [], note: 'practice' };
+    const before = ledger.length;
+    if (!scoredOn(d, 'workout')) {
+      const extras = [];
+      if (scoredOn(addDays(d, -1), 'workout')) { const n = streakTo(addDays(d, -1)) + 1, m = Math.min(n, STREAK_CAP); extras.push([`Streak bonus (${n} days in a row${n > STREAK_CAP ? ', max' : ''})`, STREAK_PTS * m, 'streak']); }
+      const mon = mondayOf(d); let wk = 0;
+      for (let j = 0; j < 7; j++) if (scoredOn(addDays(mon, j), 'workout')) wk++;
+      if (wk === 6 && !ledger.some(e => e.k === 'week' && e.d >= mon && e.d <= addDays(mon, 6))) extras.push(['Full week bonus: all 7 days!', WEEK_PTS, 'week']);
+      res = award('workout', REP_PTS, [['Bulls training: full session', REP_PTS]], extras, d);
+      ledger.slice(before).forEach(e => { e.rep = true; }); saveLedger();
+    }
+    sessions.push({ d, type: 'rep', name: 'Bulls training', active: Math.round(mins * 60), completed: true, pts: res.pts, note: res.note, auto: !!auto }); saveSessions();
+    delete repSkip[d]; store.set('repSkip', repSkip);
+    const wk = 'wk-' + mondayOf(d), dn = wk === weekKey ? done : store.get(wk, {});
+    dn[wdOf(d)] = true; store.set(wk, dn);
+    return res;
+  }
+  function unlogRep(d) {
+    ledger = ledger.filter(e => !(e.rep && e.d === d)); saveLedger();
+    sessions = sessions.filter(x => !(x.type === 'rep' && x.d === d)); saveSessions();
+    repSkip[d] = true; store.set('repSkip', repSkip);
+    const own = sessions.some(x => x.type === 'workout' && x.d === d && x.completed);
+    const wk = 'wk-' + mondayOf(d), dn = wk === weekKey ? done : store.get(wk, {});
+    if (!own) { dn[wdOf(d)] = false; store.set(wk, dn); }
+  }
+  function autoRep() {
+    if (!repSched.days.length) return 0;
+    let n = 0;
+    for (let k = 6; k >= 0; k--) {
+      const d = addDays(today(), -k);
+      if (repSched.since && d < repSched.since) continue;
+      const i = wdOf(d), on = d >= ymd(monday) ? isRep(i) : repSched.days.includes(i);
+      if (on && !repSkip[d] && !repRec(d) && !scoredOn(d, 'workout')) { logRep(d, repSched.mins || 120, true); n++; }
+    }
+    return n;
+  }
+  autoRep();
 
   renderWeek(); renderDetail();
 })();
